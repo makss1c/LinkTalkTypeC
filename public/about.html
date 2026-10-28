@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#060606" />
+    <title>About LinkTalk</title>
+    <link rel="icon" type="image/png" href="/images/linktalk-icon.png" />
+    <link rel="stylesheet" href="/linktalk-ui.css" />
+    <script src="/i18n-ru.js" defer></script>
+    <script src="/i18n.js" defer></script>
+  </head>
+  <body>
+    <main class="about-page">
+      <header class="about-head">
+        <div class="about-brand">
+          <img src="/images/linktalk-mark.png" alt="" />
+          <div class="about-word" data-no-i18n>LINK<b>TALK</b></div>
+        </div>
+      </header>
+
+      <section class="about-card">
+        <h2>About LinkTalk</h2>
+        <p>Digital intercom system with a walkie-talkie mode and an intercom panel mode.</p>
+        <p id="about-version" data-no-i18n></p>
+      </section>
+
+      <section class="about-card">
+        <h2>Developer</h2>
+        <div class="about-links">
+          <a href="https://t.me/makss1c" target="_blank" rel="noopener"><span>TELEGRAM</span><span data-no-i18n>@makss1c</span></a>
+          <a href="mailto:makss.1c@yandex.ru"><span>E-MAIL</span><span data-no-i18n>makss.1c@yandex.ru</span></a>
+        </div>
+      </section>
+
+      <section class="about-card">
+        <h2>Based on</h2>
+        <p>LinkTalk is a derivative work based on the open-source project Talktome by thepoison606.</p>
+        <p data-no-i18n><a href="https://github.com/thepoison606/talktome" target="_blank" rel="noopener">github.com/thepoison606/talktome</a></p>
+        <p>Licensed under the Apache License 2.0.</p>
+      </section>
+
+      <p class="about-meta" data-no-i18n>© 2026 makss1c</p>
+    </main>
+    <script>
+      fetch("/about.json").then(function (r) { return r.json(); }).then(function (a) {
+        var el = document.getElementById("about-version");
+        if (el) el.textContent = "LinkTalk " + a.version + " · protocol " + a.serverVersion;
+      }).catch(function () {});
+    </script>
+  </body>
+</html>

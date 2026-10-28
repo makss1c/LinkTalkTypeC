@@ -1,0 +1,74 @@
+# SQLite-Database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# TLS certificates & secrets
+certs/
+*.pem
+fernet.key
+.env
+.env.*
+config.json
+gateway/radio-config.json
+
+# Dependency directories
+node_modules/
+.pnp.cjs
+.pnp.loader.mjs
+.yarn/
+.cache/
+.npm/
+
+# Build artifacts
+talktome_arm64
+mediasoup-worker
+mediasoup-worker*
+better_sqlite3.node
+talktome_win64*.exe
+talktome_win64*.zip
+talktome_windows_x64_release_*/
+talktome_macos*.zip
+talktome_macos*.sha256
+talktome_macos*_release_*/
+talktome-macos*
+worker/
+dist/
+build/
+bridge-client/src-tauri/target/
+coverage/
+.nyc_output/
+*.tgz
+
+# Lockfiles
+yarn.lock
+pnpm-lock.yaml
+package-lock.json
+!bridge-client/package-lock.json
+!server-app/package-lock.json
+!mobile-app/package-lock.json
+
+# IDE / editor metadata
+.idea/
+.vscode/
+
+# macOS Finder noise
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Generated runtime assets
+public/socket.io.js
+build-version.json
+bridge-client/tauri.local-version.json
+bridge-client/tauri.release-version.json
+server-app/tauri.local-version.json
+server-app/tauri.release-version.json
+
+# local build artifacts
+talktome_win64_bundle/

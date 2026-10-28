@@ -1,0 +1,4641 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>LinkTalk Admin</title>
+    <link rel="icon" type="image/png" href="/images/linktalk-icon.png" />
+    <link rel="stylesheet" href="/login.css" />
+    <style>
+      :root {
+        --bg: #161615;
+        --card-bg: #201e1d;
+        --primary: #ed7723;
+        --primary-dark: #e36912;
+        --accent: #f59e0b;
+        --text: #eae9e8;
+        --muted: #aaa6a2;
+        --border: rgba(170, 166, 162, 0.2);
+        --surface: #2d2b29;
+        --chip: rgba(170, 166, 162, 0.12);
+        --success: #d68e11;
+        --danger: #ef6044;
+        --radius: 12px;
+        --control-height: 2.95rem;
+        --config-action-width: 11rem;
+        --media-network-action-width: 14rem;
+        --media-network-download-width: 2.6rem;
+        --media-network-qr-gap: 0.45rem;
+        --admin-content-width: 1800px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+      }
+
+      .is-hidden {
+        display: none !important;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      .user-audio-settings-dialog {
+        position: fixed;
+        inset: 0;
+        z-index: 500;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        background: rgba(23, 11, 2, 0.78);
+      }
+
+      .user-audio-settings-dialog__panel {
+        width: min(44rem, 100%);
+        max-height: calc(100dvh - 2rem);
+        overflow: auto;
+        padding: 1rem 1.1rem;
+        font-size: 0.86rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--card-bg);
+        box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.45);
+      }
+
+      .user-audio-settings-dialog__header,
+      .user-audio-settings-dialog__actions,
+      .user-audio-settings-row,
+      .user-audio-settings-switch {
+        display: flex;
+        align-items: center;
+      }
+
+      .user-audio-settings-dialog__header { justify-content: space-between; gap: 1rem; }
+      .user-audio-settings-dialog__header h2 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 650;
+        line-height: 1.25;
+      }
+      .user-audio-settings-dialog button.user-audio-settings-dialog__close,
+      button.image-lightbox__close {
+        display: grid;
+        place-items: center;
+        width: 2.2rem;
+        min-width: 2.2rem;
+        height: 2.2rem;
+        min-height: 2.2rem;
+        padding: 0;
+        aspect-ratio: 1;
+        font-size: 1.15rem;
+        line-height: 1;
+      }
+      .user-audio-settings-form { display: grid; gap: 0.5rem; margin-top: 0.75rem; }
+      .user-audio-settings-row { justify-content: space-between; gap: 1rem; }
+      .user-audio-settings-row label { color: var(--text); font-weight: 600; }
+      .user-audio-settings-row select {
+        width: min(19rem, 58%);
+        height: 2.15rem;
+        min-height: 2.15rem;
+        padding: 0.3rem 0.6rem;
+      }
+      .user-audio-settings-range { display: grid; gap: 0.2rem; }
+      .user-audio-settings-range__label { display: flex; justify-content: space-between; gap: 1rem; font-weight: 600; }
+      .user-audio-settings-range input[type='range'] {
+        width: 100%;
+        height: 1.15rem;
+        min-height: 1.15rem;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+      .user-audio-settings-switch { justify-content: space-between; gap: 1rem; min-height: 1.9rem; font-weight: 600; }
+      .user-audio-settings-dialog .admin-switch__track {
+        width: 2.45rem;
+        height: 1.3rem;
+      }
+      .user-audio-settings-dialog .admin-switch__track::after {
+        top: 0.14rem;
+        left: 0.14rem;
+        width: 0.9rem;
+        height: 0.9rem;
+      }
+      .user-audio-settings-dialog .admin-switch input:checked + .admin-switch__track::after {
+        transform: translateX(1.12rem);
+      }
+      .user-audio-settings-dialog__actions { margin-top: 0.3rem; }
+      .user-audio-settings-error { color: #fcb3a5; }
+      .user-audio-settings-notice {
+        margin-top: 0.75rem;
+        padding: 0.65rem 0.75rem;
+        border: 1px solid rgba(245, 158, 11, 0.45);
+        border-radius: 0.5rem;
+        background: rgba(245, 158, 11, 0.1);
+        color: #fcd34d;
+        line-height: 1.4;
+      }
+      .user-settings-button { gap: 0.4rem; }
+      .user-settings-button svg { width: 1.05rem; height: 1.05rem; display: block; }
+
+      .admin-bar {
+        position: fixed;
+        top: 0;
+        left: 50%;
+        z-index: 100;
+        width: min(calc(100% - 1.5rem), var(--admin-content-width));
+        padding: 0.58rem 1.15rem;
+        transform: translateX(-50%);
+        display: grid;
+        grid-template-columns: minmax(10rem, 1fr) auto minmax(10rem, 1fr);
+        align-items: center;
+        gap: 1rem;
+        background: rgba(22, 22, 21, 0.94);
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(12px);
+      }
+
+      .admin-bar__meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-width: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .admin-brand-icon {
+        width: 1.35rem;
+        height: 1.35rem;
+        border-radius: 6px;
+        flex: 0 0 auto;
+      }
+
+      .admin-bar__meta strong {
+        color: var(--text);
+      }
+
+      .admin-bar__nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.15rem;
+        min-width: 0;
+      }
+
+      .admin-bar__nav a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.15rem;
+        padding: 0.34rem 0.7rem;
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+        border-bottom: 2px solid transparent;
+        transition: color 0.15s ease, border-color 0.15s ease;
+      }
+
+      .admin-bar__nav a:hover,
+      .admin-bar__nav a:focus-visible {
+        color: var(--text);
+      }
+
+      .admin-bar__nav a[aria-current='location'] {
+        color: #fff;
+        border-bottom-color: var(--primary);
+      }
+
+      @media (hover: none) and (pointer: coarse) {
+        .admin-bar__nav a:not([aria-current='location']):focus {
+          color: var(--muted);
+          border-bottom-color: transparent;
+          outline: none;
+        }
+      }
+
+      #admin-logout {
+        flex: 0 0 auto;
+        min-height: 0;
+        padding: 0.4rem 0.75rem;
+        border: 1px solid rgba(237, 119, 35, 0.35);
+        background: rgba(237, 119, 35, 0.18);
+        color: var(--text);
+        font-size: 0.8rem;
+      }
+
+      #admin-logout:hover {
+        border-color: rgba(246, 137, 59, 0.58);
+        background: rgba(237, 119, 35, 0.3);
+      }
+
+      .admin-bar__actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        min-width: 0;
+      }
+
+      .admin-bar__message-slot {
+        display: flex;
+        justify-content: flex-end;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      .admin-bar__message-slot .flash-message {
+        position: static;
+        top: auto;
+        right: auto;
+        z-index: auto;
+        max-width: 100%;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        box-shadow: none;
+      }
+
+      .admin-bar.has-expanded-message {
+        grid-template-rows: auto auto;
+      }
+
+      .admin-bar.has-expanded-message .admin-bar__actions {
+        display: contents;
+      }
+
+      .admin-bar.has-expanded-message .admin-bar__message-slot {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        justify-content: center;
+      }
+
+      .admin-bar.has-expanded-message #admin-logout {
+        grid-column: 3;
+        grid-row: 1;
+        justify-self: end;
+      }
+
+      .admin-bar.has-expanded-message .admin-bar__message-slot .flash-message {
+        width: min(100%, 64rem);
+        max-width: min(100%, 64rem);
+        overflow: visible;
+        text-align: center;
+        text-overflow: clip;
+        white-space: normal;
+        border-radius: 12px;
+        line-height: 1.35;
+      }
+
+      .admin-bar.has-expanded-message + main {
+        padding-top: calc(var(--admin-expanded-bar-height, 6.15rem) + 1rem);
+      }
+
+      main {
+        width: min(calc(100% - 3rem), var(--admin-content-width));
+        padding: 4.55rem 0 3rem;
+        max-width: var(--admin-content-width);
+        margin: 0 auto;
+        display: grid;
+        gap: 1.35rem;
+      }
+
+      .flash-message {
+        display: none;
+        position: fixed;
+        top: 4.85rem;
+        right: max(1rem, calc((100vw - var(--admin-content-width)) / 2 + 1rem));
+        z-index: 300;
+        max-width: min(34rem, calc(100vw - 2rem));
+        padding: 0.4rem 0.75rem;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-left: auto;
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+        pointer-events: none;
+      }
+
+      .card-header .flash-message {
+        margin: 0;
+      }
+
+      main > .flash-message {
+        margin: 0;
+      }
+
+      .flash-message.is-visible {
+        display: block;
+      }
+
+      .flash-success {
+        background: rgba(214, 142, 17, 0.12);
+        color: var(--success);
+      }
+
+      .flash-error {
+        background: rgba(239, 96, 68, 0.15);
+        color: var(--danger);
+      }
+
+      .flash-warning {
+        background: rgba(245, 158, 11, 0.18);
+        color: var(--accent);
+      }
+
+      .card {
+        background: var(--card-bg);
+        padding: 1.05rem 1.25rem 1.15rem;
+        border-radius: var(--radius);
+        box-shadow: 0 18px 40px rgba(30, 28, 27, 0.35);
+        border: 1px solid var(--border);
+      }
+
+      main > .card {
+        scroll-margin-top: 5.2rem;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0;
+      }
+
+      main > .card:not(.admin-view-active) {
+        display: none;
+      }
+
+      main > .card > .card-header {
+        min-height: 0;
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: 0;
+        justify-content: flex-end;
+      }
+
+      main > .card > .card-header .card-header__title {
+        display: none;
+      }
+
+      #matrix-section > .card-header {
+        justify-content: flex-start;
+        padding: 0.35rem 0 0.9rem;
+      }
+
+      #matrix-section > .card-header .card-header__actions {
+        justify-content: flex-start;
+        margin-left: 0;
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .card.card--collapsed .card-header {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: 0;
+      }
+
+      .card--toggleable {
+        cursor: default;
+        user-select: none;
+      }
+
+      .card--toggleable .card-section-body,
+      .card--toggleable .card-header__actions {
+        cursor: auto;
+        user-select: auto;
+      }
+
+      .card-header--toggleable {
+        cursor: default;
+        user-select: none;
+      }
+
+      .card-header__title {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        min-width: 0;
+        cursor: default;
+        user-select: none;
+      }
+
+      .card-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+
+      .card-collapse-toggle {
+        appearance: none;
+        -webkit-appearance: none;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        min-height: 0;
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        color: var(--muted);
+        box-shadow: none;
+      }
+
+      .card-collapse-toggle::before {
+        content: '▸';
+        display: block;
+        font-size: 1rem;
+        line-height: 1;
+        transition: transform 0.18s ease;
+        transform-origin: center;
+      }
+
+      .card-collapse-toggle[aria-expanded='true']::before {
+        transform: rotate(90deg);
+      }
+
+      .card-collapse-toggle:hover {
+        background: transparent;
+        color: var(--text);
+        transform: none;
+      }
+
+      .card-collapse-toggle:focus-visible {
+        outline: none;
+        border-radius: 6px;
+        box-shadow: 0 0 0 3px rgba(237, 119, 35, 0.2);
+      }
+
+      .card-header__actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-left: auto;
+      }
+
+      .card-section-body {
+        display: grid;
+        gap: 0;
+      }
+
+      .section-note {
+        margin: -0.35rem 0 1rem;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .form-grid {
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      form.inline-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1rem;
+        align-items: center;
+        margin-bottom: 0.9rem;
+      }
+
+      .field-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .field-group label {
+        margin: 0;
+        white-space: nowrap;
+      }
+
+      .field-group input {
+        min-width: 180px;
+      }
+
+      .field-group--stacked {
+        align-items: stretch;
+        flex: 1 1 280px;
+      }
+
+      .field-group--stacked label {
+        margin-bottom: 0.35rem;
+      }
+
+      label {
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .visually-hidden {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+      }
+
+      input,
+      select,
+      button {
+        font: inherit;
+      }
+
+      input:not([type='file']),
+      select {
+        height: var(--control-height);
+        padding: 0.6rem 0.75rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        background: #1d1c1b;
+        color: var(--text);
+      }
+
+      input::placeholder {
+        color: var(--muted);
+      }
+
+      input[type='file'] {
+        min-height: 0;
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(237, 119, 35, 0.2);
+      }
+
+      button {
+        min-height: var(--control-height);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border-radius: 8px;
+        border: none;
+        padding: 0.6rem 1rem;
+        font-weight: 600;
+        color: #fff;
+        background: #f6893b;
+        transition: transform 0.15s ease, background 0.15s ease;
+        box-shadow: none;
+      }
+
+      button:hover {
+        background: var(--primary-dark);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      button.small {
+        min-height: 0;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+        background: rgba(237, 119, 35, 0.18);
+        color: var(--text);
+        border: 1px solid rgba(237, 119, 35, 0.35);
+        box-shadow: none;
+      }
+
+      button.small.danger {
+        background: rgba(239, 96, 68, 0.16);
+        border-color: rgba(239, 96, 68, 0.35);
+        color: var(--danger);
+        box-shadow: none;
+      }
+
+      button.small.warning {
+        background: rgba(245, 158, 11, 0.18);
+        border-color: rgba(245, 158, 11, 0.35);
+        color: var(--accent);
+        box-shadow: none;
+      }
+
+      button.small.admin-role-toggle {
+        width: 8rem;
+      }
+
+      .item-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .list-item {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+        padding: 0.5rem 0.75rem;
+        display: grid;
+        gap: 0.35rem;
+        box-shadow: 0 12px 28px rgba(30, 28, 27, 0.25);
+        scroll-margin-top: 5.2rem;
+      }
+
+      .list-item-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.55rem;
+      }
+
+      .list-item-header--toggleable {
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .list-item--toggleable {
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .list-item--jump-highlight {
+        border-color: rgba(237, 119, 35, 0.75);
+        box-shadow: 0 0 0 3px rgba(237, 119, 35, 0.16);
+      }
+
+      .list-item--toggleable .nested,
+      .list-item--toggleable .inline-controls {
+        cursor: auto;
+        user-select: auto;
+      }
+
+      .list-item-title {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.55rem;
+        font-weight: 600;
+      }
+
+      .list-item-title--toggle {
+        appearance: none;
+        -webkit-appearance: none;
+        min-height: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: var(--text);
+        box-shadow: none;
+        cursor: pointer;
+        user-select: none;
+        text-align: left;
+      }
+
+      .list-item-title--toggle:hover {
+        background: transparent;
+        color: #fff;
+        transform: none;
+      }
+
+      .list-item-title--toggle:focus-visible {
+        outline: none;
+        border-radius: 8px;
+        box-shadow: 0 0 0 3px rgba(237, 119, 35, 0.2);
+      }
+
+      .list-item-disclosure {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1rem;
+        color: var(--muted);
+        transition: transform 0.18s ease, color 0.18s ease;
+        transform-origin: center;
+      }
+
+      .list-item-disclosure::before {
+        content: '▸';
+        line-height: 1;
+        font-size: 0.95rem;
+      }
+
+      .list-item-title--toggle[aria-expanded='true'] .list-item-disclosure {
+        transform: rotate(90deg);
+        color: var(--text);
+      }
+
+      .badge {
+        padding: 0.25rem 0.6rem;
+        background: rgba(237, 119, 35, 0.2);
+        color: var(--text);
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .badge.admin {
+        background: rgba(214, 142, 17, 0.2);
+        color: #f9e2b9;
+      }
+
+      .badge.superadmin {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fde68a;
+      }
+
+      .badge.guest-profile {
+        display: inline-flex;
+        align-items: center;
+        flex: 0 0 auto;
+        white-space: nowrap;
+        line-height: 1.2;
+        background: rgba(233, 105, 14, 0.18);
+        color: #fdd6ba;
+      }
+
+      .badge.bridge {
+        background: rgba(246, 137, 59, 0.18);
+        color: #fed9bf;
+      }
+
+      details {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(30, 28, 27, 0.6);
+        padding: 0.75rem 1rem;
+      }
+
+      details summary {
+        cursor: pointer;
+        font-weight: 600;
+        color: var(--text);
+        outline: none;
+        list-style: none;
+      }
+
+      details[open] summary {
+        margin-bottom: 0.75rem;
+      }
+
+      .nested {
+        display: none;
+        margin-top: 1rem;
+        border-top: 1px solid var(--border);
+        padding-top: 1rem;
+        color: var(--text);
+      }
+
+      .nested.is-open {
+        display: block;
+      }
+
+      .nested-block + .nested-block {
+        margin-top: 1.5rem;
+      }
+
+      .user-target-controls + .user-bridge-controls {
+        margin-top: 0.65rem;
+      }
+
+      .user-bridge-controls .bridge-config-form {
+        margin-top: 0;
+      }
+
+      .bridge-config-form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.7rem;
+        align-items: end;
+        margin-top: 0.55rem;
+      }
+
+      .bridge-config-form .bridge-instance-field {
+        grid-column: 1 / -1;
+      }
+
+      .bridge-scope-row {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+      }
+
+      .bridge-config-form .bridge-input-switch {
+        grid-column: 1 / -1;
+        margin: 0;
+        min-height: var(--control-height);
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .bridge-config-options {
+        display: contents;
+      }
+
+      .bridge-config-options[hidden] {
+        display: none;
+      }
+
+      .bridge-config-form .field-group {
+        display: grid;
+        align-items: stretch;
+        gap: 0.35rem;
+      }
+
+      .bridge-config-form .field-group label {
+        white-space: normal;
+      }
+
+      .bridge-channel-row {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem);
+        gap: 0.5rem;
+      }
+
+      .bridge-channel-row .field-group:first-child {
+        min-width: 0;
+      }
+
+      .bridge-trigger-row {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-template-columns: minmax(10rem, 16rem) minmax(0, 1fr);
+        gap: 0.5rem;
+        align-items: end;
+      }
+
+      .bridge-trigger-details {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(8rem, 11rem);
+        gap: 0.5rem;
+        align-items: end;
+      }
+
+      .bridge-trigger-details[hidden] {
+        display: none;
+      }
+
+      .bridge-config-form select {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .bridge-config-form button {
+        justify-self: start;
+      }
+
+      .nested ul {
+        list-style: none;
+        margin: 0.5rem 0 0;
+        padding: 0;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .list-chip {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0.75rem;
+        background: var(--chip);
+        border-radius: 10px;
+      }
+
+      .list-chip .chip-label {
+        flex: 1 1 auto;
+        font-weight: 500;
+      }
+
+      .setting-meta {
+        display: grid;
+        gap: 0.35rem;
+        margin-bottom: 1rem;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .setting-meta strong {
+        color: var(--text);
+      }
+
+      .config-layout {
+        display: grid;
+        gap: 1rem;
+        width: min(100%, 68rem);
+        margin-inline: auto;
+      }
+
+      @media (min-width: 1024px) {
+        #config-network-panel > .config-layout,
+        #config-access-panel > .config-layout {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        #config-network-panel > .config-layout > .config-panel {
+          grid-column: 1 / -1;
+        }
+
+        #config-network-panel > .config-layout > [aria-labelledby="config-rtc-ports-heading"] {
+          grid-column: 1;
+        }
+
+        #config-network-panel > .config-layout > [aria-labelledby="config-network-heading"] {
+          grid-column: 2;
+        }
+
+        #config-network-panel .rtc-port-form {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+        }
+
+        #config-network-panel .rtc-port-form input,
+        #config-network-panel #mdns-host {
+          min-width: 0;
+        }
+
+        #config-network-panel #mdns-form .field-group {
+          flex-direction: column;
+          gap: 0;
+        }
+
+        #config-network-panel #mdns-form label {
+          align-self: flex-start;
+          margin-bottom: 0.35rem;
+        }
+
+        #config-network-panel #mdns-host {
+          width: 100%;
+        }
+      }
+
+      .config-panel {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(30, 28, 27, 0.55);
+        padding: 0.9rem 1rem;
+      }
+
+      .config-panel h3 {
+        margin: 0 0 0.7rem;
+        font-size: 0.95rem;
+      }
+
+      .config-panel .setting-meta {
+        margin-bottom: 0.85rem;
+        font-size: 0.86rem;
+      }
+
+      .config-panel > h3 + .setting-meta {
+        margin-top: auto;
+      }
+
+      .default-client-settings-panel {
+        grid-column: 1 / -1;
+        width: min(100%, 68rem);
+        margin-inline: auto;
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+
+      .default-client-settings-form {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .default-client-settings-selects,
+      .default-client-settings-toggles {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem 1rem;
+      }
+
+      .default-client-setting-field {
+        display: grid;
+        gap: 0.5rem;
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(30, 28, 27, 0.55);
+        min-width: 0;
+      }
+
+      .default-client-setting-field > label,
+      .default-client-setting-toggle > span:first-child {
+        color: var(--text);
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+
+      .default-client-setting-toggle {
+        min-height: 2.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.9rem 1rem;
+        background: rgba(30, 28, 27, 0.55);
+        cursor: pointer;
+      }
+
+      .default-client-settings-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        grid-column: 1 / -1;
+        min-height: 2.2rem;
+      }
+
+      .config-panel input:not([type='file']):not([type='checkbox']),
+      .config-panel select {
+        height: 2.2rem;
+        padding-top: 0.3rem;
+        padding-bottom: 0.3rem;
+      }
+
+      .config-panel form.inline-form {
+        margin-bottom: 0;
+        align-items: flex-end;
+      }
+
+      #web-access-form {
+        display: flex;
+        flex-wrap: wrap;
+      }
+
+      #web-access-form .field-group {
+        flex: 1 1 14rem;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      #web-access-form label {
+        white-space: normal;
+      }
+
+      #web-access-form input,
+      #web-access-form select {
+        min-width: 0;
+        width: 100%;
+      }
+
+      #web-access-form button {
+        flex: 0 0 auto;
+        margin-left: auto;
+      }
+
+      #mdns-form .field-group label {
+        align-self: center;
+        margin-bottom: 0;
+      }
+
+      .media-network-meta {
+        display: contents;
+      }
+
+      .media-network-info {
+        grid-column: 1;
+        grid-row: 1;
+        display: grid;
+        gap: 0.6rem;
+        align-self: start;
+        min-width: 0;
+      }
+
+      .media-network-meta h3 {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .media-network-meta .setting-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.65rem 1rem;
+        margin-bottom: 0;
+      }
+
+      #media-network-override-hint {
+        flex-basis: 100%;
+      }
+
+      .media-network-stat-label {
+        display: inline;
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: inherit;
+      }
+
+      .media-network-meta .setting-meta strong {
+        display: inline;
+        overflow-wrap: anywhere;
+        font-weight: 600;
+      }
+
+      #media-network-restart-hint,
+      #media-network-override-hint {
+        grid-column: 1 / -1;
+        font-size: inherit;
+      }
+
+      .media-network-warning {
+        border: 1px solid rgba(245, 158, 11, 0.42);
+        border-radius: 8px;
+        background: rgba(245, 158, 11, 0.12);
+        color: #fbbf24;
+        font-size: 0.86rem;
+        line-height: 1.4;
+        padding: 0.65rem 0.75rem;
+      }
+
+      .media-network-top {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-rows: auto auto auto;
+        gap: 0.5rem 1rem;
+        align-items: end;
+      }
+
+      .media-network-top:has(.media-network-qr-card.is-hidden) {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      #media-network-form {
+        display: contents;
+      }
+
+      #media-network-form .field-group {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 0;
+      }
+
+      #media-network-form .field-group label {
+        flex: 0 0 8.5rem;
+        margin-bottom: 0;
+        white-space: normal;
+      }
+
+      #media-network-form .field-group--stacked {
+        flex: 0 1 auto;
+      }
+
+      #media-network-mode-group {
+        grid-column: 1;
+        grid-row: 2;
+      }
+
+      #media-interface-group,
+      #media-announced-address-group {
+        grid-column: 1;
+        grid-row: 3;
+      }
+
+      #media-network-form .field-group input,
+      #media-network-form .field-group select {
+        flex: 1 1 0;
+        min-width: 0;
+        width: 100%;
+        max-width: 24rem;
+      }
+
+      .media-interface-label {
+        flex: 0 0 8.5rem;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .media-adapter-options {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 24rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.4rem 0.6rem;
+        background: rgba(30, 28, 27, 0.5);
+      }
+
+      #media-network-form .media-adapter-options label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        padding: 0.2rem 0;
+        cursor: pointer;
+        font-weight: 400;
+      }
+
+      #media-network-form .media-adapter-options .admin-switch input {
+        flex: 0 0 auto;
+        width: 1px;
+        height: 1px;
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        margin: -1px;
+      }
+
+      #media-network-actions {
+        grid-column: 3;
+        grid-row: 3;
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+        justify-content: flex-end;
+      }
+
+      .media-network-top:has(.media-network-qr-card.is-hidden) #media-network-actions {
+        grid-column: 2;
+      }
+
+      @media (min-width: 769px) {
+        .media-network-top:has(#media-interface-group.is-hidden):has(#media-announced-address-group.is-hidden) {
+          grid-template-rows: auto auto;
+        }
+
+        .media-network-top:has(#media-interface-group.is-hidden):has(#media-announced-address-group.is-hidden) #media-network-actions {
+          grid-row: 2;
+        }
+
+        .media-network-top:has(#media-interface-group.is-hidden):has(#media-announced-address-group.is-hidden) .media-network-qr-card {
+          grid-row: 1 / span 2;
+        }
+      }
+
+      #media-network-form button {
+        min-width: 0;
+      }
+
+      .config-panel form button,
+      .api-key-actions button,
+      .config-export-group button,
+      .config-import-actions button {
+        min-width: 0;
+      }
+
+      .config-panel button:not(.media-network-qr-button),
+      .admin-action-dialog__actions button,
+      .user-audio-settings-dialog__close,
+      .image-lightbox__close {
+        height: 2.2rem;
+        min-height: 0;
+        padding: 0.4rem 0.75rem;
+        border: 1px solid rgba(237, 119, 35, 0.35);
+        background: rgba(237, 119, 35, 0.18);
+        color: var(--text);
+        font-size: 0.8rem;
+        box-shadow: none;
+      }
+
+      .config-panel button:not(.media-network-qr-button):hover,
+      .admin-action-dialog__actions button:hover,
+      .user-audio-settings-dialog__close:hover,
+      .image-lightbox__close:hover {
+        border-color: rgba(246, 137, 59, 0.58);
+        background: rgba(237, 119, 35, 0.3);
+      }
+
+      .config-panel button.warning:not(.media-network-qr-button) {
+        border-color: rgba(245, 158, 11, 0.35);
+        background: rgba(245, 158, 11, 0.16);
+        color: var(--accent);
+      }
+
+      .config-panel button.warning:not(.media-network-qr-button):hover {
+        border-color: rgba(245, 158, 11, 0.55);
+        background: rgba(245, 158, 11, 0.24);
+      }
+
+      .api-key-controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.6rem;
+        align-items: end;
+      }
+
+      .api-key-field {
+        width: 100%;
+      }
+
+      .api-key-field input {
+        width: 100%;
+        height: 2.2rem;
+        padding: 0.3rem 2.5rem 0.3rem 0.7rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.82rem;
+      }
+
+      .config-panel .api-key-field .password-toggle {
+        right: 0.2rem;
+        width: 1.9rem;
+        height: 1.9rem;
+        min-width: 0;
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: inherit;
+        transform: translateY(-50%);
+      }
+
+      .config-panel .api-key-field .password-toggle:hover {
+        border: 0;
+        background: rgba(170, 166, 162, 0.12);
+        color: var(--text);
+        transform: translateY(-50%);
+      }
+
+      .api-key-actions {
+        display: flex;
+        gap: 0.6rem;
+        justify-content: flex-end;
+      }
+
+      .rtc-port-form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(8rem, 12rem)) minmax(var(--config-action-width), 1fr);
+        gap: 0.9rem 1rem;
+        align-items: end;
+      }
+
+      .rtc-port-form .field-group {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        min-width: 0;
+      }
+
+      .rtc-port-form .field-group label {
+        margin-bottom: 0.35rem;
+        white-space: normal;
+      }
+
+      .rtc-port-form input {
+        width: 100%;
+      }
+
+      .rtc-port-form button {
+        justify-self: end;
+      }
+
+      .guest-login-form {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        min-height: 2.2rem;
+      }
+
+      .guest-login-content {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 0.85rem 1rem;
+        margin-top: auto;
+      }
+
+      .config-panel .guest-login-content .setting-meta {
+        margin-bottom: 0;
+      }
+
+      .admin-switch {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        color: var(--muted);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .admin-switch input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .admin-switch__track {
+        position: relative;
+        width: 2.8rem;
+        height: 1.5rem;
+        flex: 0 0 auto;
+        border: 1px solid rgba(170, 166, 162, 0.35);
+        border-radius: 999px;
+        background: rgba(170, 166, 162, 0.18);
+        transition: border-color 0.15s ease, background 0.15s ease;
+      }
+
+      .admin-switch__track::after {
+        content: '';
+        position: absolute;
+        top: 0.17rem;
+        left: 0.17rem;
+        width: 1.05rem;
+        height: 1.05rem;
+        border-radius: 50%;
+        background: #d8d6d4;
+        box-shadow: 0 1px 3px rgba(30, 28, 27, 0.5);
+        transition: transform 0.15s ease, background 0.15s ease;
+      }
+
+      .admin-switch input:checked + .admin-switch__track {
+        border-color: rgba(246, 137, 59, 0.75);
+        background: rgba(237, 119, 35, 0.75);
+      }
+
+      .admin-switch input:checked + .admin-switch__track::after {
+        background: #fff;
+        transform: translateX(1.3rem);
+      }
+
+      .admin-switch input:focus-visible + .admin-switch__track {
+        box-shadow: 0 0 0 3px rgba(237, 119, 35, 0.2);
+      }
+
+      .admin-switch:has(input:disabled) {
+        cursor: wait;
+        opacity: 0.6;
+      }
+
+      .toggle-row {
+        min-height: var(--control-height);
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .toggle-row input[type='checkbox'] {
+        width: 1.15rem;
+        height: 1.15rem;
+        accent-color: var(--primary);
+      }
+
+      .config-tabs {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.2rem 0.65rem;
+        margin-top: -0.6rem;
+        margin-bottom: 0.8rem;
+      }
+
+      .config-tabs button {
+        background: transparent;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        color: var(--muted);
+        padding: 0.34rem 0.7rem;
+        min-height: 2.15rem;
+        font-size: 0.86rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .config-tabs button:hover,
+      .config-tabs button:focus-visible {
+        background: transparent;
+        color: var(--text);
+      }
+
+      .config-tabs button[aria-selected='true'] {
+        color: #fff;
+        border-bottom-color: var(--primary);
+      }
+
+      .config-category-panel[hidden] {
+        display: none;
+      }
+
+      .media-network-qr-card {
+        grid-column: 2;
+        grid-row: 1 / span 3;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        align-items: end;
+        max-width: 21rem;
+        align-self: end;
+      }
+
+      .media-network-qr-item {
+        width: 6.5rem;
+        display: grid;
+        gap: 0.3rem;
+      }
+
+      .media-network-qr-caption {
+        color: var(--muted);
+        font-size: 0.75rem;
+        text-align: center;
+        overflow-wrap: anywhere;
+      }
+
+      .media-network-qr-button {
+        appearance: none;
+        -webkit-appearance: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.2rem;
+        border: 1px solid rgba(170, 166, 162, 0.28);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.96);
+        cursor: pointer;
+        min-width: 0;
+        width: 100%;
+        aspect-ratio: 1;
+        transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+      }
+
+      .media-network-qr-button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(237, 119, 35, 0.55);
+        box-shadow: 0 10px 24px rgba(30, 28, 27, 0.28);
+      }
+
+      .media-network-qr-button:disabled {
+        cursor: default;
+        opacity: 0.5;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .media-network-qr-image {
+        display: block;
+        height: 100%;
+        width: 100%;
+        object-fit: contain;
+      }
+
+      .icon-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+      }
+
+      .icon-button svg {
+        width: 1.05rem;
+        height: 1.05rem;
+        display: block;
+      }
+
+      .image-lightbox__actions {
+        display: flex;
+        justify-content: center;
+      }
+
+      .image-lightbox__download {
+        width: auto;
+        min-width: 7rem;
+        min-height: 2.7rem !important;
+        gap: 0.45rem;
+        padding: 0.55rem 0.9rem;
+      }
+
+      .image-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: rgba(22, 22, 21, 0.86);
+        backdrop-filter: blur(6px);
+      }
+
+      .image-lightbox__dialog {
+        position: relative;
+        width: min(92vw, 620px);
+        display: grid;
+        gap: 0.75rem;
+        padding: 1.2rem;
+        border-radius: 16px;
+        border: 1px solid rgba(170, 166, 162, 0.24);
+        background: rgba(32, 30, 29, 0.98);
+        box-shadow: 0 28px 64px rgba(0, 0, 0, 0.45);
+      }
+
+      .image-lightbox__close {
+        appearance: none;
+        -webkit-appearance: none;
+        position: absolute;
+        top: 0.85rem;
+        right: 0.85rem;
+      }
+
+      .image-lightbox__title {
+        margin: 0;
+        font-size: 1.08rem;
+        font-weight: 700;
+      }
+
+      .image-lightbox__image-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.2rem;
+      }
+
+      .image-lightbox__image {
+        display: block;
+        width: min(100%, 560px);
+        height: auto;
+      }
+
+      .admin-action-dialog {
+        position: fixed;
+        inset: 0;
+        z-index: 1100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: rgba(22, 22, 21, 0.82);
+        backdrop-filter: blur(6px);
+      }
+
+      .admin-action-dialog__panel {
+        width: min(92vw, 460px);
+        display: grid;
+        gap: 1rem;
+        padding: 1.25rem;
+        border: 1px solid rgba(170, 166, 162, 0.24);
+        border-radius: 16px;
+        background: rgba(32, 30, 29, 0.99);
+        box-shadow: 0 28px 64px rgba(0, 0, 0, 0.45);
+      }
+
+      .admin-action-dialog__title,
+      .admin-action-dialog__message {
+        margin: 0;
+      }
+
+      .admin-action-dialog__title {
+        font-size: 1.15rem;
+      }
+
+      .admin-action-dialog__message {
+        color: var(--muted);
+        white-space: pre-line;
+      }
+
+      .admin-action-dialog__field {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .admin-action-dialog__field input {
+        width: 100%;
+      }
+
+      .admin-action-dialog__field .password-input-wrap:not(.has-password-toggle) input {
+        padding-right: 0.75rem;
+      }
+
+      .admin-action-dialog__error {
+        min-height: 1.25rem;
+        color: var(--danger);
+        font-size: 0.88rem;
+      }
+
+      .admin-action-dialog__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.65rem;
+      }
+
+      .admin-action-dialog__confirm.danger {
+        background: #b9361c;
+      }
+
+      .admin-action-dialog__confirm.danger:hover {
+        background: #99301b;
+      }
+
+      body.admin-dialog-open {
+        overflow: hidden;
+      }
+
+      .config-backup-panel {
+        width: min(100%, 68rem);
+        margin-inline: auto;
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+
+      .config-transfer-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .config-transfer-card,
+      .config-auto-backup-form {
+        padding: 1.1rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(30, 28, 27, 0.55);
+        min-width: 0;
+      }
+
+      .config-transfer-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        padding: 0.9rem 1rem;
+      }
+
+      .config-transfer-card h4 {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .config-transfer-description {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.5;
+      }
+
+      .config-transfer-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: auto;
+      }
+
+      .config-import-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.75rem;
+        margin-top: auto;
+      }
+
+      .config-import-row .config-file-picker {
+        flex: 1 1 0;
+      }
+
+      .config-import-row > button {
+        flex: 0 0 auto;
+      }
+
+      .config-file-picker {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.55rem 0.7rem;
+        border: 1px dashed rgba(170, 166, 162, 0.35);
+        border-radius: 7px;
+        background: rgba(30, 28, 27, 0.3);
+        cursor: pointer;
+        min-width: 0;
+      }
+
+      .config-file-picker:hover,
+      .config-file-picker:focus-within {
+        border-color: var(--primary);
+      }
+
+      .config-file-picker > span:first-child {
+        font-size: 0.86rem;
+        font-weight: 600;
+      }
+
+      #config-import-filename {
+        color: var(--muted);
+        font-size: 0.8rem;
+        overflow-wrap: anywhere;
+      }
+
+      .config-auto-backup-form {
+        display: grid;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      .config-auto-backup-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .config-auto-backup-toggle {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        min-width: 0;
+        margin: 0;
+        cursor: pointer;
+      }
+
+      .config-auto-backup-title {
+        display: grid;
+        gap: 0.3rem;
+      }
+
+      .config-auto-backup-title strong {
+        font-size: 0.95rem;
+      }
+
+      .config-auto-backup-title > span {
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 400;
+        line-height: 1.4;
+      }
+
+      .config-auto-backup-details {
+        display: grid;
+        grid-template-columns: minmax(10rem, 12rem) minmax(0, 1fr);
+        gap: 1rem 1.5rem;
+        align-items: center;
+      }
+
+      .config-auto-backup-interval {
+        display: grid;
+        gap: 0.4rem;
+        margin: 0;
+        font-size: 0.86rem;
+        font-weight: 600;
+      }
+
+      .config-auto-backup-footer {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .config-auto-backup-time {
+        display: grid;
+        gap: 0.35rem;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .config-auto-backup-time > span {
+        color: var(--text);
+        font-size: 0.86rem;
+      }
+
+      .config-auto-backup-status {
+        grid-column: 1 / -1;
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.5;
+      }
+
+      .config-auto-backup-status code {
+        overflow-wrap: anywhere;
+        user-select: text;
+      }
+
+      #config-auto-backup-error {
+        color: var(--danger);
+        font-size: 0.82rem;
+      }
+
+      .config-auto-backup-actions {
+        flex: 0 0 auto;
+      }
+
+      .drag-handle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 2rem;
+        min-height: 2rem;
+        cursor: grab;
+        font-size: 1rem;
+        color: var(--muted);
+        user-select: none;
+        touch-action: none;
+        line-height: 1;
+      }
+
+      .draggable-target.dragging {
+        opacity: 0.6;
+      }
+
+      .production-order-list.is-touch-reordering,
+      .item-list.is-touch-reordering {
+        user-select: none;
+      }
+
+      .production-order-list.is-touch-reordering .drag-handle,
+      .item-list.is-touch-reordering .drag-handle {
+        cursor: grabbing;
+      }
+
+      .inline-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+      }
+
+      .list-item-header .inline-controls {
+        margin-top: 0;
+        align-items: center;
+      }
+
+      .inline-controls select {
+        min-width: 160px;
+      }
+
+      .inline-controls strong {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .helper-text {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .target-matrix-wrap {
+        max-width: 100%;
+        max-height: min(70vh, 48rem);
+        overflow: auto;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        cursor: crosshair;
+      }
+
+      .target-matrix-wrap.is-painting {
+        cursor: crosshair;
+        user-select: none;
+      }
+
+      .target-matrix-wrap.is-painting .target-matrix-toggle {
+        cursor: crosshair;
+      }
+
+      .entity-layout,
+      .production-layout {
+        display: grid;
+        grid-template-columns: minmax(18rem, 26rem) minmax(0, 1fr);
+        align-items: start;
+        gap: 1rem;
+      }
+
+      .production-layout.production-layout--single {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .production-layout--single #production-detail > .production-detail-header,
+      .production-layout--single .production-members-panel,
+      .production-layout--single .production-order-row,
+      .production-layout--single #production-order-list {
+        display: none;
+      }
+
+      .production-layout--single .production-config-layout {
+        margin-top: 0;
+      }
+
+      .production-layout--single .production-matrix-panel {
+        flex-basis: 100%;
+      }
+
+      .production-entity-heading {
+        margin: 0.85rem 0 0.25rem;
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .production-entity-heading:first-child {
+        margin-top: 0;
+      }
+
+      .entity-sidebar,
+      .entity-detail-panel,
+      .production-sidebar,
+      .production-panel {
+        padding: 0.9rem;
+        border: 1px solid rgba(170, 166, 162, 0.18);
+        border-radius: 10px;
+        background: rgba(30, 28, 27, 0.32);
+      }
+
+      .entity-sidebar .entity-create-form {
+        display: grid;
+        gap: 0.45rem;
+        align-items: stretch;
+        margin: 0 0 0.7rem;
+        padding-bottom: 0.7rem;
+        border-bottom: 1px solid rgba(170, 166, 162, 0.16);
+      }
+
+      .entity-sidebar .entity-create-form .field-group {
+        display: grid;
+        align-items: stretch;
+        gap: 0.25rem;
+      }
+
+      .entity-sidebar .entity-create-form input,
+      .entity-sidebar .entity-create-form button {
+        width: 100%;
+        min-width: 0;
+        height: 2.2rem;
+        min-height: 2.2rem;
+      }
+
+      .entity-sidebar .entity-create-form button {
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+      }
+
+      .entity-search {
+        position: relative;
+        margin-bottom: 0.7rem;
+      }
+
+      .entity-search::before {
+        content: '';
+        position: absolute;
+        left: 0.65rem;
+        top: 50%;
+        z-index: 1;
+        width: 0.9rem;
+        height: 0.9rem;
+        background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-4-4'/%3E%3C/svg%3E");
+        pointer-events: none;
+        transform: translateY(-50%);
+      }
+
+      .entity-search input {
+        width: 100%;
+        min-width: 0;
+        height: 2.2rem;
+        padding: 0.3rem 2rem 0.3rem 1.9rem;
+      }
+
+      .entity-search input::-webkit-search-cancel-button {
+        display: none;
+      }
+
+      .entity-search button {
+        position: absolute;
+        top: 50%;
+        right: 0.25rem;
+        width: 1.7rem;
+        min-width: 1.7rem;
+        height: 1.7rem;
+        min-height: 1.7rem;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 1.2rem;
+        line-height: 1;
+        transform: translateY(-50%);
+      }
+
+      .entity-search button:hover,
+      .entity-search button:focus-visible {
+        background: transparent;
+        color: var(--text);
+        transform: translateY(-50%);
+      }
+
+      .entity-search button[hidden] {
+        display: none;
+      }
+
+      .entity-picker-list {
+        display: grid;
+        gap: 0.45rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .entity-picker-list button {
+        width: 100%;
+        min-height: 2.55rem;
+        padding: 0.4rem 0.7rem;
+        justify-content: flex-start;
+        text-align: left;
+        background: rgba(46, 44, 43, 0.72);
+      }
+
+      .entity-picker-list button[aria-current='true'] {
+        border-color: #f6893b;
+        background: rgba(246, 137, 59, 0.18);
+      }
+
+      .entity-layout--users .entity-picker-list button {
+        justify-content: space-between;
+        gap: 0.55rem;
+      }
+
+      .entity-picker-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .entity-picker-badges {
+        display: inline-flex;
+        flex: 0 0 auto;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.25rem;
+      }
+
+      .entity-picker-badges .badge {
+        padding: 0.18rem 0.45rem;
+        font-size: 0.68rem;
+      }
+
+      .entity-picker-empty,
+      .entity-empty {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .entity-picker-empty {
+        padding: 0.45rem 0.25rem;
+      }
+
+      .entity-detail-panel {
+        min-width: 0;
+      }
+
+      .entity-detail-list > .entity-detail-item {
+        border: 0;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .entity-detail-item .nested {
+        display: block;
+        margin-top: 0.35rem;
+      }
+
+      .entity-detail-item :is(.nested, .nested-block) > .inline-controls {
+        align-items: center;
+        margin-top: 0.55rem;
+      }
+
+      .entity-detail-item :is(.nested, .nested-block) > .inline-controls > :is(select, button) {
+        height: 2.2rem;
+        min-height: 2.2rem;
+        padding-top: 0.3rem;
+        padding-bottom: 0.3rem;
+      }
+
+      .entity-detail-item[hidden] {
+        display: none;
+      }
+
+      #production-create-form {
+        display: grid;
+        gap: 0.35rem;
+        align-items: stretch;
+        margin: 0 0 0.7rem;
+        padding-bottom: 0.7rem;
+        border-bottom: 1px solid rgba(170, 166, 162, 0.16);
+      }
+
+      #production-create-form > label {
+        margin: 0;
+        font-size: 0.85rem;
+      }
+
+      .production-create-controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.45rem;
+        align-items: stretch;
+        width: 100%;
+      }
+
+      #production-create-form input {
+        width: 100%;
+        min-width: 0;
+        height: 2.2rem;
+        padding: 0.3rem 0.6rem;
+      }
+
+      #production-create-form button {
+        width: 100%;
+        min-width: 0;
+        height: 2.2rem;
+        min-height: 2.2rem;
+        padding: 0.25rem 0.7rem;
+      }
+
+      :is(#user-form, #conf-form, #feed-form) input:not([type='file']) {
+        height: 2.2rem;
+        padding-top: 0.3rem;
+        padding-bottom: 0.3rem;
+      }
+
+      :is(#user-form, #conf-form, #feed-form) > button[type='submit'] {
+        height: 2.2rem;
+        min-height: 2.2rem;
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+      }
+
+      :is(#user-form, #feed-form) .password-input-wrap input {
+        padding-right: 2.5rem;
+      }
+
+      :is(#user-form, #feed-form) .password-toggle {
+        right: 0.2rem;
+        width: 1.9rem;
+        height: 1.9rem;
+        min-width: 0;
+        min-height: 0;
+        padding: 0;
+      }
+
+      .production-list button {
+        justify-content: center;
+        text-align: center;
+      }
+
+      .production-list button[aria-current="true"] {
+        border-color: #f6893b;
+        background: rgba(246, 137, 59, 0.18);
+      }
+
+      .production-detail-header,
+      .production-order-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .production-detail-header h3 {
+        margin: 0;
+      }
+
+      .production-detail-header {
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid rgba(170, 166, 162, 0.16);
+      }
+
+      .production-detail-header .inline-controls {
+        margin-top: 0;
+      }
+
+      .production-order-row {
+        justify-content: flex-start;
+        gap: 0.55rem;
+      }
+
+      .production-order-row h3 {
+        margin: 0;
+      }
+
+      #production-order-user {
+        height: 2.2rem;
+        padding-top: 0.3rem;
+        padding-bottom: 0.3rem;
+      }
+
+      .production-config-layout {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+
+      .production-members-panel {
+        flex: 1 1 16rem;
+        min-width: min(100%, 16rem);
+        max-width: 28rem;
+      }
+
+      .production-matrix-panel {
+        flex: 999 1 38rem;
+        min-width: min(100%, 38rem);
+      }
+
+      .production-matrix-panel .matrix-subheading {
+        margin-top: 0;
+      }
+
+      .production-members-panel .matrix-subheading {
+        margin: 0;
+      }
+
+      .production-check-list,
+      .production-order-list {
+        display: grid;
+        gap: 0.4rem;
+        margin: 0.6rem 0 0;
+        padding: 0;
+        overflow: visible;
+        list-style: none;
+      }
+
+      .production-check-row,
+      .production-order-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 1.9rem;
+        padding: 0.22rem 0.45rem;
+        border: 1px solid rgba(170, 166, 162, 0.14);
+        border-radius: 7px;
+        background: rgba(30, 28, 27, 0.45);
+      }
+
+      .production-check-row {
+        height: 2.55rem;
+        min-height: 2.55rem;
+        cursor: pointer;
+        transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+      }
+
+      .production-matrix-panel .target-matrix-wrap {
+        max-height: none;
+        overflow-x: auto;
+        overflow-y: visible;
+      }
+
+      .production-check-row.is-inactive {
+        opacity: 0.42;
+        color: var(--muted);
+        background: rgba(30, 28, 27, 0.24);
+      }
+
+      .production-check-row.is-inactive:hover,
+      .production-check-row.is-inactive:focus-visible {
+        opacity: 0.78;
+        border-color: rgba(246, 137, 59, 0.5);
+        background: rgba(190, 88, 15, 0.12);
+        outline: none;
+      }
+
+      .production-check-row button.production-member-toggle {
+        flex: 0 0 1.4rem;
+        width: 1.4rem;
+        height: 1.4rem;
+        min-width: 1.4rem;
+        min-height: 1.4rem;
+        padding: 0;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 1.05rem;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: none;
+      }
+
+      .production-check-row button.production-member-toggle.is-member {
+        background: transparent;
+        color: var(--muted);
+      }
+
+      .production-check-row button.production-member-toggle:hover,
+      .production-check-row button.production-member-toggle:focus-visible {
+        background: transparent;
+        color: var(--text);
+        transform: none;
+      }
+
+      .production-check-row button.production-admin-role-toggle {
+        flex: 0 0 auto;
+        height: 1.85rem;
+        min-height: 1.85rem;
+        padding: 0.15rem 0.55rem;
+        line-height: 1;
+      }
+
+      .production-check-row > span,
+      .production-order-item > span {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .production-check-row > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .production-order-list button {
+        min-width: 2.1rem;
+        padding: 0.28rem 0.48rem;
+      }
+
+      @media (max-width: 900px) {
+        .entity-layout,
+        .production-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .target-matrix {
+        --matrix-cell-size: 1.9rem;
+        width: var(--matrix-table-width);
+        table-layout: fixed;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.84rem;
+      }
+
+      .target-matrix th,
+      .target-matrix td {
+        min-width: 7rem;
+        height: 3.2rem;
+        padding: 0.45rem 0.6rem;
+        text-align: center;
+        border-right: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .target-matrix tr:last-child td,
+      .target-matrix tr:last-child th {
+        border-bottom: 0;
+      }
+
+      .target-matrix th:last-child,
+      .target-matrix td:last-child {
+        border-right: 0;
+      }
+
+      .target-matrix thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        color: var(--text);
+        background: #262524;
+      }
+
+      .target-matrix thead tr:nth-child(2) th {
+        top: 1.65rem;
+      }
+
+      .target-matrix .target-matrix__corner,
+      .target-matrix .target-matrix__user-name {
+        position: sticky;
+        left: 0;
+        min-width: 7.5rem;
+        max-width: 7.5rem;
+        text-align: left;
+        z-index: 3;
+        background: #262524;
+      }
+
+      .target-matrix .target-matrix__corner {
+        z-index: 4;
+        padding: 0;
+        overflow: hidden;
+      }
+
+      .target-matrix .target-matrix__corner::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          to top right,
+          transparent calc(50% - 0.5px),
+          rgba(170, 166, 162, 0.5) 50%,
+          transparent calc(50% + 0.5px)
+        );
+        pointer-events: none;
+      }
+
+      .target-matrix__corner-label {
+        position: absolute;
+        z-index: 1;
+        color: var(--muted);
+        font-size: 0.68rem;
+        font-weight: 700;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .target-matrix__corner-label--users {
+        bottom: 0.55rem;
+        left: 0.55rem;
+      }
+
+      .target-matrix__corner-label--targets {
+        top: 0.55rem;
+        right: 0.55rem;
+      }
+
+      .target-matrix .target-matrix__group {
+        height: 1.65rem;
+        min-width: 0;
+        width: 0;
+        max-width: none;
+        padding-block: 0.1rem;
+        padding-inline: 0.1rem;
+        color: var(--muted);
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+
+      .target-matrix col.target-matrix__profile-column {
+        width: 7.5rem;
+      }
+
+      .target-matrix col.target-matrix__target-col {
+        width: var(--matrix-cell-size);
+      }
+
+      .target-matrix .target-matrix__group--users {
+        border-top: 2px solid #f6893b;
+      }
+
+      .target-matrix .target-matrix__group--conferences {
+        border-top: 2px solid #d68e11;
+      }
+
+      .target-matrix .target-matrix__group--feeds {
+        border-top: 2px solid #f59e0b;
+      }
+
+      .target-matrix__column-label {
+        display: block;
+        max-width: 8rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .target-matrix th.target-matrix__target-column,
+      .target-matrix td.target-matrix__target-column {
+        width: var(--matrix-cell-size);
+        min-width: var(--matrix-cell-size);
+        max-width: var(--matrix-cell-size);
+        padding-inline: 0.1rem;
+      }
+
+      .target-matrix tbody tr,
+      .target-matrix tbody th,
+      .target-matrix tbody td {
+        height: var(--matrix-cell-size);
+        min-height: var(--matrix-cell-size);
+        max-height: var(--matrix-cell-size);
+        padding-block: 0;
+        line-height: 1;
+      }
+
+      .target-matrix thead th.target-matrix__target-column {
+        height: 6.25rem;
+        vertical-align: bottom;
+      }
+
+      .target-matrix__target-column .target-matrix__column-label {
+        width: 1.2rem;
+        max-width: none;
+        max-height: 5.5rem;
+        margin: 0 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+      }
+
+      .target-matrix tbody tr:hover td,
+      .target-matrix tbody tr:hover .target-matrix__user-name {
+        background: #2c2a28;
+      }
+
+      .target-matrix .target-matrix__target-column.is-column-highlighted {
+        background: #2c2a28;
+      }
+
+      .target-matrix td.target-matrix__unavailable {
+        color: #5c5854;
+        background: rgba(30, 28, 27, 0.58);
+      }
+
+      .target-matrix-toggle {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        width: auto;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        cursor: crosshair;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+      }
+
+      .target-matrix-toggle::before {
+        content: '';
+        width: 0.52rem;
+        height: 0.52rem;
+        border-radius: 999px;
+        opacity: 0;
+        transform: scale(0.72);
+        background: var(--primary);
+        box-shadow: none;
+        transition: opacity 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+      }
+
+      .target-matrix td.target-matrix__coupling {
+        position: relative;
+        padding: 0;
+      }
+
+      .target-matrix-toggle:hover {
+        background: transparent;
+        transform: none;
+      }
+
+      .target-matrix-toggle[aria-pressed='true'] {
+        background: radial-gradient(
+          circle at center,
+          rgba(246, 137, 59, 0.15) 0,
+          rgba(246, 137, 59, 0.085) 0.58rem,
+          rgba(246, 137, 59, 0.03) 0.95rem,
+          transparent 1.35rem
+        );
+        box-shadow: inset 0 0 0.9rem rgba(246, 137, 59, 0.065);
+      }
+
+      .target-matrix-toggle[aria-pressed='true']::before {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow:
+          0 0 0.18rem rgba(253, 191, 147, 0.82),
+          0 0 0.5rem rgba(246, 137, 59, 0.62),
+          0 0 0.85rem rgba(237, 119, 35, 0.3);
+      }
+
+      .target-matrix-toggle[aria-pressed='true']:hover {
+        background: radial-gradient(
+          circle at center,
+          rgba(246, 137, 59, 0.15) 0,
+          rgba(246, 137, 59, 0.085) 0.58rem,
+          rgba(246, 137, 59, 0.03) 0.95rem,
+          transparent 1.35rem
+        );
+      }
+
+      .target-matrix-toggle[data-state='listen-only'] {
+        background: radial-gradient(
+          circle at center,
+          rgba(249, 115, 22, 0.15) 0,
+          rgba(249, 115, 22, 0.085) 0.58rem,
+          rgba(249, 115, 22, 0.03) 0.95rem,
+          transparent 1.35rem
+        );
+        box-shadow: inset 0 0 0.9rem rgba(249, 115, 22, 0.065);
+      }
+
+      .target-matrix-toggle[data-state='listen-only']::before {
+        opacity: 1;
+        transform: scale(1);
+        background: #f97316;
+        box-shadow:
+          0 0 0.18rem rgba(253, 186, 116, 0.82),
+          0 0 0.5rem rgba(249, 115, 22, 0.62),
+          0 0 0.85rem rgba(234, 49, 12, 0.3);
+      }
+
+      .conference-listen-only-legend {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+
+      .conference-listen-only-dot {
+        width: 0.52rem;
+        height: 0.52rem;
+        flex: 0 0 0.52rem;
+        border-radius: 999px;
+        background: #f97316;
+        box-shadow: 0 0 0.35rem rgba(249, 115, 22, 0.68);
+      }
+
+      .target-matrix-toggle:focus-visible {
+        outline: none;
+        box-shadow: inset 0 0 0 3px rgba(253, 191, 147, 0.9);
+      }
+
+      .target-matrix-toggle:disabled {
+        cursor: crosshair;
+      }
+
+      .target-matrix-empty {
+        margin: 0;
+        padding: 1rem;
+        color: var(--muted);
+      }
+
+      .matrix-subheading {
+        margin: 0 0 0.55rem;
+        font-size: 0.9rem;
+        color: var(--text);
+      }
+
+      .matrix-subheading--secondary {
+        margin-top: 1.5rem;
+      }
+
+      .status-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+        margin-bottom: 1.4rem;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .status-summary__item {
+        min-width: 0;
+        padding: 0.8rem 1rem;
+        border-right: 1px solid var(--border);
+      }
+
+      .status-summary__item:last-child {
+        border-right: 0;
+      }
+
+      .status-summary__label {
+        display: block;
+        margin-bottom: 0.2rem;
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .status-summary__value {
+        color: var(--text);
+        font-size: 1.1rem;
+        font-weight: 700;
+      }
+
+      .status-summary__server-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .status-group + .status-group {
+        margin-top: 1.5rem;
+      }
+
+      .status-group__heading {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        margin: 0 0 0.55rem;
+      }
+
+      .status-group__heading h3 {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .status-group__count,
+      .status-version {
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .status-group__heading--users {
+        align-items: center;
+      }
+
+      .status-users-title {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        min-width: 0;
+      }
+
+      .status-users-controls {
+        display: inline-flex;
+      }
+
+      button.status-user-filter-toggle {
+        width: 1.8rem;
+        min-width: 1.8rem;
+        height: 1.8rem;
+        min-height: 0;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--muted);
+      }
+
+      .status-user-filter-toggle svg {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      button.status-user-filter-toggle:hover,
+      button.status-user-filter-toggle[aria-expanded='true'],
+      button.status-user-filter-toggle[data-active='true'] {
+        color: #fdbf93;
+        background: rgba(246, 137, 59, 0.16);
+      }
+
+      .status-user-filter-toggle:focus-visible {
+        outline: 2px solid #faa060;
+        outline-offset: 2px;
+      }
+
+      .status-user-filter-panel {
+        position: absolute;
+        top: calc(100% + 0.45rem);
+        left: 0;
+        z-index: 20;
+        width: max-content;
+        max-width: min(20rem, calc(100vw - 2rem));
+        max-height: min(20rem, calc(100dvh - 8rem));
+        overflow-y: auto;
+        padding: 0.3rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--card-bg);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      }
+
+      .status-user-filter-panel button {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.55rem;
+        width: 100%;
+        min-width: 0;
+        min-height: 2.2rem;
+        padding: 0.45rem 0.65rem;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--text);
+        font-size: 0.82rem;
+        text-align: left;
+      }
+
+      .status-user-filter-panel button:hover,
+      .status-user-filter-panel button:focus-visible {
+        background: rgba(246, 137, 59, 0.16);
+        transform: none;
+      }
+
+      .status-user-filter-panel button:focus-visible {
+        outline: 2px solid #faa060;
+        outline-offset: -2px;
+      }
+
+      .status-user-filter-panel button svg {
+        flex: 0 0 1rem;
+        width: 1rem;
+        height: 1rem;
+        color: #fdbf93;
+      }
+
+      .status-user-filter-panel button[aria-checked='false'] svg {
+        visibility: hidden;
+      }
+
+      .status-user-filter-panel button span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .status-table-wrap {
+        max-width: 100%;
+        overflow-x: auto;
+      }
+
+      .status-table {
+        width: 100%;
+        min-width: 59.5rem;
+        table-layout: fixed;
+        border-collapse: collapse;
+        font-size: 0.84rem;
+      }
+
+      .status-table.status-table--with-production {
+        min-width: 67.5rem;
+      }
+
+      .status-col--status { width: 20%; }
+      .status-col--name { width: 10%; }
+      .status-col--production { width: 10%; }
+      .status-col--client { width: 16%; }
+      .status-col--address { width: 16%; }
+      .status-col--rtt { width: 7%; }
+      .status-col--loss { width: 7%; }
+      .status-col--connected { width: 12%; }
+      .status-col--last-seen { width: 12%; }
+
+      .status-table--with-production .status-col--name { width: 9%; }
+      .status-table--with-production .status-col--client { width: 14%; }
+      .status-table--with-production .status-col--address { width: 14%; }
+      .status-table--with-production .status-col--rtt { width: 6%; }
+      .status-table--with-production .status-col--loss { width: 6%; }
+      .status-table--with-production .status-col--connected { width: 10.5%; }
+      .status-table--with-production .status-col--last-seen { width: 10.5%; }
+
+      .status-table th,
+      .status-table td {
+        padding: 0.62rem 0.7rem;
+        text-align: left;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--border);
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .status-table th {
+        color: var(--muted);
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .status-table th[title] {
+        cursor: help;
+      }
+
+      .status-table tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .status-indicator {
+        display: inline-grid;
+        grid-template-columns: 0.58rem minmax(0, 1fr);
+        align-items: center;
+        gap: 0.45rem;
+        max-width: 100%;
+        white-space: nowrap;
+      }
+
+      .status-indicator span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .status-indicator__dot {
+        width: 0.58rem;
+        height: 0.58rem;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: #7c7873;
+      }
+
+      @keyframes statusTalkingLedPulse {
+        0%,
+        100% {
+          opacity: 0.72;
+          transform: scale(0.82);
+          box-shadow:
+            0 0 0 2px rgba(246, 156, 92, 0.12),
+            0 0 5px rgba(246, 156, 92, 0.28);
+        }
+
+        50% {
+          opacity: 1;
+          transform: scale(1);
+          box-shadow:
+            0 0 0 4px rgba(246, 156, 92, 0.2),
+            0 0 12px rgba(246, 156, 92, 0.55);
+        }
+      }
+
+      .status-indicator__dot.is-online {
+        background: var(--success);
+        box-shadow: 0 0 0 3px rgba(214, 142, 17, 0.14);
+      }
+
+      .status-indicator__dot.is-offline,
+      .status-indicator__dot.is-failed {
+        background: var(--danger);
+        box-shadow: 0 0 0 3px rgba(239, 96, 68, 0.14);
+      }
+
+      .status-indicator__dot.is-warning {
+        background: var(--accent);
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
+      }
+
+      .status-indicator__dot.is-talking {
+        background: #f69c5c;
+        animation: statusTalkingLedPulse 1.35s ease-in-out infinite;
+        animation-delay: var(--status-talking-animation-delay, 0ms);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .status-indicator__dot.is-talking {
+          animation: none;
+          background: #f69c5c;
+          box-shadow: 0 0 0 3px rgba(246, 156, 92, 0.18);
+        }
+      }
+
+      .status-primary {
+        color: var(--text);
+        font-weight: 650;
+      }
+
+      .status-user-link {
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        cursor: pointer;
+        text-align: left;
+      }
+
+      .status-user-link:hover,
+      .status-user-link:focus-visible {
+        color: #fff;
+        background: transparent;
+        text-decoration: underline;
+        transform: none;
+      }
+
+      .status-user-link:focus-visible {
+        outline: 2px solid rgba(237, 119, 35, 0.55);
+        outline-offset: 2px;
+      }
+
+      .status-secondary {
+        display: block;
+        margin-top: 0.12rem;
+        color: var(--muted);
+        font-size: 0.75rem;
+      }
+
+      .status-empty {
+        color: var(--muted);
+        text-align: center !important;
+      }
+
+      .status-version {
+        margin: 1rem 0 0;
+        text-align: right;
+      }
+
+      @media (max-width: 768px) {
+        .admin-bar {
+          grid-template-columns: minmax(0, 1fr) auto;
+          padding: 0.56rem 0.9rem;
+        }
+
+        .admin-bar__nav {
+          grid-column: 1 / -1;
+          grid-row: 2;
+          justify-content: space-between;
+          gap: 0;
+          width: 100%;
+          overflow-x: hidden;
+          scrollbar-width: none;
+        }
+
+        .admin-bar__nav a {
+          min-width: 0;
+          min-height: 1.9rem;
+          padding: 0.25rem 0.3rem;
+          font-size: 0.72rem;
+        }
+
+        .admin-bar__actions {
+          grid-column: 2;
+          grid-row: 1;
+        }
+
+        .admin-bar.has-message .admin-bar__meta {
+          display: none;
+        }
+
+        .admin-bar.has-message .admin-bar__actions {
+          grid-column: 1 / -1;
+        }
+
+        .admin-bar.has-message .admin-bar__message-slot {
+          justify-content: flex-start;
+        }
+
+        .admin-bar.has-expanded-message .admin-bar__message-slot {
+          grid-column: 1 / -1;
+          grid-row: 3;
+          justify-content: stretch;
+        }
+
+        .admin-bar.has-expanded-message #admin-logout {
+          grid-column: 2;
+          grid-row: 1;
+        }
+
+        .admin-bar__nav::-webkit-scrollbar {
+          display: none;
+        }
+
+        main > .card {
+          scroll-margin-top: 8rem;
+        }
+
+        main {
+          width: min(calc(100% - 1.5rem), var(--admin-content-width));
+          padding: 6.75rem 0 3rem;
+        }
+
+        .card {
+          padding: 1.5rem;
+        }
+
+        main > .card {
+          padding: 0;
+        }
+
+        .config-transfer-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .config-auto-backup-details {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .default-client-settings-selects,
+        .default-client-settings-toggles {
+          grid-template-columns: 1fr;
+        }
+
+        .default-client-settings-actions {
+          justify-content: stretch;
+        }
+
+        .rtc-port-form,
+        .guest-login-form {
+          grid-template-columns: 1fr;
+        }
+
+        .media-network-top,
+        .media-network-top:has(.media-network-qr-card.is-hidden) {
+          grid-template-columns: minmax(0, 1fr) auto;
+          grid-template-rows: auto;
+        }
+
+        .media-network-info {
+          grid-column: 1 / -1;
+          grid-row: 1;
+        }
+
+        #media-network-mode-group {
+          grid-column: 1 / -1;
+          grid-row: 2;
+        }
+
+        #media-interface-group,
+        #media-announced-address-group {
+          grid-column: 1 / -1;
+          grid-row: 3;
+        }
+
+        #media-network-actions,
+        .media-network-top:has(.media-network-qr-card.is-hidden) #media-network-actions {
+          grid-column: 2;
+          grid-row: 4;
+        }
+
+        .config-panel form button,
+        .config-export-group button,
+        .config-import-actions button {
+          width: 100%;
+        }
+
+        .api-key-controls {
+          grid-template-columns: 1fr;
+        }
+
+        .api-key-actions {
+          justify-content: stretch;
+        }
+
+        .api-key-actions button {
+          width: 100%;
+        }
+
+        .guest-login-content {
+          grid-template-columns: 1fr;
+        }
+
+        .media-network-qr-card {
+          grid-column: 1;
+          grid-row: 4;
+          justify-self: start;
+        }
+
+        .image-lightbox {
+          padding: 1rem;
+        }
+
+        .image-lightbox__dialog {
+          width: 100%;
+          padding: 1rem;
+        }
+
+        .config-import-actions {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        form.inline-form {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .field-group {
+          width: 100%;
+          justify-content: space-between;
+        }
+
+        .field-group input {
+          flex: 1 1 auto;
+        }
+
+        .status-table {
+          min-width: 0;
+          display: block;
+        }
+
+        .status-table.status-table--with-production {
+          min-width: 0;
+        }
+
+        .status-table colgroup,
+        .status-table thead {
+          display: none;
+        }
+
+        .status-table tbody {
+          display: grid;
+          gap: 0.55rem;
+        }
+
+        .status-table tbody tr {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.45rem 0.8rem;
+          padding: 0.65rem 0.75rem;
+          border: 1px solid rgba(170, 166, 162, 0.16);
+          border-radius: 9px;
+          background: rgba(46, 44, 43, 0.5);
+        }
+
+        .status-table td {
+          display: block;
+          min-width: 0;
+          padding: 0;
+          border: 0;
+          overflow: hidden;
+          text-overflow: clip;
+        }
+
+        .status-table td::before {
+          display: block;
+          margin-bottom: 0.08rem;
+          color: var(--muted);
+          font-size: 0.6rem;
+          font-weight: 750;
+          letter-spacing: 0.035em;
+          text-transform: uppercase;
+        }
+
+        .status-table td:nth-child(1)::before { content: 'Status'; }
+        .status-table td:nth-child(2)::before { content: 'Name'; }
+        .status-table td:nth-child(3)::before { content: 'Client'; }
+        .status-table td:nth-child(4)::before { content: 'Address'; }
+        .status-table td:nth-child(5)::before { content: 'RTT'; }
+        .status-table td:nth-child(6)::before { content: 'Loss'; }
+        .status-table td:nth-child(7)::before { content: 'Connected since'; }
+        .status-table td:nth-child(8)::before { content: 'Last seen'; }
+
+        .status-table--with-production td:nth-child(3)::before { content: 'Production'; }
+        .status-table--with-production td:nth-child(4)::before { content: 'Client'; }
+        .status-table--with-production td:nth-child(5)::before { content: 'Address'; }
+        .status-table--with-production td:nth-child(6)::before { content: 'RTT'; }
+        .status-table--with-production td:nth-child(7)::before { content: 'Loss'; }
+        .status-table--with-production td:nth-child(8)::before { content: 'Connected since'; }
+        .status-table--with-production td:nth-child(9)::before { content: 'Last seen'; }
+
+        .status-table--with-production .status-production-spacer {
+          display: none;
+        }
+
+        .status-table tbody tr:has(.status-empty) {
+          grid-template-columns: 1fr;
+          background: transparent;
+        }
+
+        .status-table .status-empty::before {
+          display: none;
+        }
+
+        .status-summary {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .status-summary__item {
+          padding: 0.65rem 0.55rem;
+        }
+
+        .status-summary__item:nth-child(3n) {
+          border-right: 0;
+        }
+
+        .status-summary__item:nth-child(-n + 3) {
+          border-bottom: 1px solid var(--border);
+        }
+
+        .bridge-config-form {
+          grid-template-columns: 1fr;
+        }
+
+        .bridge-channel-row {
+          grid-column: 1;
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .bridge-scope-row {
+          grid-column: 1;
+          grid-template-columns: 1fr;
+        }
+
+        .bridge-channel-row .field-group:first-child {
+          grid-column: 1 / -1;
+        }
+
+        .bridge-trigger-row {
+          grid-column: 1;
+          grid-template-columns: 1fr;
+        }
+
+        .bridge-trigger-details {
+          grid-template-columns: 1fr;
+        }
+
+        .bridge-config-form button {
+          width: 100%;
+        }
+
+        form.inline-form button {
+          align-self: stretch;
+        }
+
+        .list-item-header {
+          flex-direction: column;
+          align-items: flex-start;
+          min-width: 0;
+          max-width: 100%;
+        }
+
+        button.small {
+          width: fit-content;
+        }
+
+        .inline-controls {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .entity-sidebar,
+        .entity-detail-panel,
+        .production-sidebar,
+        .production-panel {
+          min-width: 0;
+          max-width: 100%;
+          overflow: hidden;
+        }
+
+        .entity-sidebar .entity-create-form {
+          display: grid;
+          gap: 0.55rem;
+          inline-size: 100%;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+        }
+
+        .entity-sidebar .entity-create-form .field-group {
+          display: contents;
+        }
+
+        .entity-sidebar .entity-create-form .field-group,
+        .entity-sidebar .entity-create-form .password-input-wrap,
+        .entity-sidebar .entity-create-form input,
+        .entity-sidebar .entity-create-form button[type='submit'] {
+          flex: 0 0 100%;
+          inline-size: 100%;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+        }
+
+        .entity-sidebar .entity-create-form .password-input-wrap {
+          position: relative;
+        }
+
+        /* Keep every create control on the same full-width grid track. */
+        :is(#user-form, #conf-form, #feed-form) {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        :is(#user-form, #conf-form, #feed-form) > button[type='submit'] {
+          grid-column: 1 / -1;
+          justify-self: stretch;
+          width: 100% !important;
+          max-width: none;
+        }
+
+        :is(#user-form, #conf-form, #feed-form) > .field-group > input,
+        :is(#user-form, #feed-form) > .field-group > .password-input-wrap,
+        :is(#user-form, #feed-form) > .field-group > .password-input-wrap > input {
+          display: block;
+          grid-column: 1 / -1;
+          justify-self: stretch;
+          width: 100% !important;
+          max-width: none;
+          min-width: 0;
+        }
+
+        .entity-detail-item,
+        .entity-detail-item .nested,
+        .entity-detail-item .nested-block,
+        .entity-detail-item .list-chip {
+          min-width: 0;
+          max-width: 100%;
+        }
+
+        .entity-detail-item .nested {
+          width: 100%;
+        }
+
+        .entity-detail-item .list-chip .chip-label {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        /* Wrap all actions instead of clipping them in a horizontal scroller. */
+        .list-item-header > .inline-controls {
+          flex-direction: row;
+          flex-wrap: wrap;
+          align-items: center;
+          width: 100%;
+          max-width: 100%;
+          overflow: visible;
+          padding-bottom: 0;
+        }
+
+        .list-item-header > .inline-controls > button {
+          flex: 1 1 auto;
+          width: auto;
+          min-width: max-content;
+        }
+
+        #conf-list .nested > .inline-controls {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: stretch;
+          width: 100%;
+        }
+
+        #conf-list .nested > .inline-controls select {
+          width: 100%;
+          min-width: 0;
+        }
+
+        #conf-list .nested > .inline-controls button {
+          width: auto;
+          white-space: nowrap;
+        }
+
+        #user-list .nested-block > .inline-controls {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          width: 100%;
+        }
+
+        #user-list .nested-block > .inline-controls select {
+          width: 100%;
+          min-width: 0;
+        }
+
+        #user-list .nested-block > .inline-controls button {
+          grid-column: 1 / -1;
+          width: 100%;
+        }
+
+        #matrix-section > .card-header,
+        #matrix-section > .card-header .card-header__actions {
+          width: 100%;
+          min-width: 0;
+          max-width: 100%;
+        }
+
+        #matrix-section .admin-switch {
+          min-width: 0;
+          max-width: 100%;
+          white-space: normal;
+        }
+
+        .production-detail-header {
+          flex-direction: row;
+          flex-wrap: nowrap;
+          min-width: 0;
+          max-width: 100%;
+        }
+
+        .production-detail-header h3 {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .production-detail-header .inline-controls {
+          flex: 0 0 auto;
+          flex-direction: row;
+          flex-wrap: nowrap;
+          gap: 0.4rem;
+        }
+
+        .production-detail-header .inline-controls button {
+          width: auto;
+          white-space: nowrap;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .media-network-qr-item {
+          width: 5.5rem;
+        }
+
+        .config-auto-backup-footer {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .config-auto-backup-header,
+        .config-auto-backup-toggle {
+          gap: 0.65rem;
+        }
+
+        .admin-bar,
+        main {
+          width: calc(100% - 1rem);
+        }
+
+        .admin-bar__nav a {
+          padding-inline: 0.18rem;
+          font-size: 0.68rem;
+        }
+
+        .entity-sidebar,
+        .entity-detail-panel,
+        .production-sidebar,
+        .production-panel {
+          padding: 0.7rem;
+        }
+
+        .status-summary {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .status-summary__item,
+        .status-summary__item:nth-child(3n) {
+          border-right: 1px solid var(--border);
+          border-bottom: 1px solid var(--border);
+        }
+
+        .status-summary__item:nth-child(2n) {
+          border-right: 0;
+        }
+
+        .status-summary__item:nth-last-child(-n + 2) {
+          border-bottom: 0;
+        }
+
+        .status-table tbody tr {
+          gap: 0.4rem 0.65rem;
+          padding: 0.6rem;
+        }
+
+        .list-item-header > .inline-controls > button {
+          flex-basis: calc(50% - 0.25rem);
+          min-width: 0;
+        }
+      }
+      .status-with-stop { position: relative; display: flex; align-items: center; gap: 6px; }
+      .status-with-stop:has(.status-stop-mic) { padding-right: 36px; }
+      .status-with-stop .status-indicator { min-width: 0; }
+      .status-talk-lock-icon { width: 15px; height: 15px; flex: 0 0 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .status-table .status-sort-button { display: inline; min-height: 0; background: none; border: 0; padding: 0; border-radius: 0; color: inherit; font: inherit; text-transform: inherit; text-align: left; cursor: pointer; box-shadow: none; }
+      .status-table .status-sort-button:hover,
+      .status-table .status-stop-mic:hover { background: transparent; transform: none; box-shadow: none; }
+      th[aria-sort="ascending"] .status-sort-button::after { content: ' ↑'; }
+      th[aria-sort="descending"] .status-sort-button::after { content: ' ↓'; }
+      .status-table .status-panel-button { position: absolute; right: 0; top: 50%; margin-top: -15px; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; min-height: 0; padding: 5px; background: transparent; border: 0; box-shadow: none; }
+      .status-table .status-panel-button svg { width: 20px; height: 20px; }
+      .status-table .status-panel-button:hover { background: transparent; transform: none; box-shadow: none; }
+      .status-table .status-with-stop { padding-right: 64px; }
+      .status-table .status-stop-mic { position: absolute; right: 32px; top: 50%; margin-top: -15px; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; min-height: 0; padding: 5px; background: transparent; border: 0; box-shadow: none; }
+      .status-stop-mic img { width: 18px; height: 18px; object-fit: contain; filter: brightness(0) invert(1); }
+    
+      .linktalk-credit { margin: 1rem 0 0; font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; color: #8a8a8a; text-align: center; }
+      .linktalk-credit a { color: #ff6a00; text-decoration: none; }
+    </style>
+    <link rel="stylesheet" href="/linktalk-ui.css" />
+    <script src="/i18n-ru.js" defer></script>
+    <script src="/i18n.js" defer></script>
+  </head>
+  <body>
+    <div id="admin-login" class="login-overlay is-hidden" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
+      <div class="login-card">
+        <div class="login-brand">
+          <img class="login-brand__icon" src="/images/linktalk-mark.png" alt="" aria-hidden="true" />
+          <h2 id="admin-login-title" class="login-title">Admin Login</h2>
+          <p class="linktalk-credit">LinkTalk · developer <a href="https://t.me/makss1c" target="_blank" rel="noopener">makss1c</a> · <a href="/about">About</a></p>
+        </div>
+        <form id="admin-login-form" class="login-form" autocomplete="off">
+          <div class="login-field">
+            <label for="admin-name">Username</label>
+            <input type="text" id="admin-name" class="login-input" autocomplete="username" required />
+          </div>
+          <div class="login-field">
+            <label for="admin-password">Password</label>
+            <div class="password-input-wrap">
+              <input type="password" id="admin-password" class="login-input" autocomplete="current-password" required />
+              <button type="button" class="password-toggle" data-password-toggle="admin-password" aria-label="Show password" aria-controls="admin-password" aria-pressed="false" title="Show password">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2.75 12S6.1 5.75 12 5.75 21.25 12 21.25 12 17.9 18.25 12 18.25 2.75 12 2.75 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 15.25A3.25 3.25 0 1 0 12 8.75 3.25 3.25 0 0 0 12 15.25Z" stroke="currentColor" stroke-width="1.8"/>
+                  <path class="password-toggle__slash" d="M4.75 4.75L19.25 19.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="login-submit">Login</button>
+        </form>
+        <div id="admin-login-message" class="login-message" aria-live="polite"></div>
+        <a class="login-switch-link" href="/">→ to intercom login</a>
+      </div>
+    </div>
+
+    <div id="admin-bar" class="admin-bar is-hidden">
+      <div class="admin-bar__meta">
+        <img class="admin-brand-icon" src="/images/linktalk-mark.png" alt="" aria-hidden="true" />
+        <span>Logged in as <strong id="admin-name-label"></strong></span>
+      </div>
+      <nav class="admin-bar__nav" aria-label="Admin sections">
+        <a href="#status" data-admin-nav="status">Status</a>
+        <a href="#users" data-admin-nav="users">Users</a>
+        <a href="#conferences" data-admin-nav="conferences">Conferences</a>
+        <a href="#feeds" data-admin-nav="feeds">Feeds</a>
+        <a href="#matrix" data-admin-nav="matrix">Matrix</a>
+        <a href="#config" data-admin-nav="config">Config</a>
+      </nav>
+      <div class="admin-bar__actions">
+        <div class="admin-bar__message-slot" aria-live="polite" aria-atomic="true">
+          <div id="admin-bar-message" class="flash-message" role="status"></div>
+        </div>
+        <button id="admin-logout" type="button">Logout</button>
+      </div>
+    </div>
+
+    <main id="admin-app" class="is-hidden">
+      <div id="message" class="flash-message"></div>
+
+      <section id="status-section" class="card" aria-labelledby="status-heading">
+        <div class="card-header card-header--toggleable">
+          <div class="card-header__title">
+            <button id="status-section-toggle" type="button" class="card-collapse-toggle" aria-expanded="true" aria-controls="status-section-body" aria-label="Collapse status section"></button>
+            <h2 id="status-heading">Status</h2>
+          </div>
+          <div class="card-header__actions">
+            <div id="status-message" class="flash-message"></div>
+          </div>
+        </div>
+
+        <div id="status-section-body" class="card-section-body">
+          <div class="status-summary" aria-label="System status summary">
+            <div class="status-summary__item">
+              <span class="status-summary__label">Users</span>
+              <span id="status-summary-users" class="status-summary__value">-</span>
+            </div>
+            <div class="status-summary__item">
+              <span class="status-summary__label">Bridges</span>
+              <span id="status-summary-bridges" class="status-summary__value">-</span>
+            </div>
+            <div class="status-summary__item">
+              <span class="status-summary__label">Companion</span>
+              <span id="status-summary-companions" class="status-summary__value">-</span>
+            </div>
+            <div class="status-summary__item">
+              <span class="status-summary__label">Feeds</span>
+              <span id="status-summary-feeds" class="status-summary__value">-</span>
+            </div>
+            <div class="status-summary__item">
+              <span class="status-summary__label">Guests</span>
+              <span id="status-summary-guests" class="status-summary__value">-</span>
+            </div>
+            <div class="status-summary__item">
+              <span class="status-summary__label">Server uptime</span>
+              <span class="status-summary__server-state">
+                <span id="status-server-dot" class="status-indicator__dot" role="img" aria-label="Server status unknown"></span>
+                <span id="status-summary-uptime" class="status-summary__value">-</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="status-group">
+            <div class="status-group__heading status-group__heading--users">
+              <div class="status-users-title">
+                <h3>Users</h3>
+                <div id="status-users-controls" class="status-users-controls">
+                  <button id="status-user-filter-toggle" type="button" class="status-user-filter-toggle" aria-label="Filter users by production" title="Filter by production" aria-haspopup="menu" aria-expanded="false" aria-controls="status-user-filter-panel" hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18l-7 8v7l-4 2v-9Z"/></svg>
+                  </button>
+                  <div id="status-user-filter-panel" class="status-user-filter-panel" role="menu" aria-label="Filter users by production" hidden></div>
+                </div>
+              </div>
+              <span id="status-users-count" class="status-group__count"></span>
+            </div>
+            <div class="status-table-wrap">
+              <table class="status-table status-table--users">
+                <colgroup>
+                  <col class="status-col--status">
+                  <col class="status-col--name">
+                  <col class="status-col--production" data-status-production-column hidden>
+                  <col class="status-col--client">
+                  <col class="status-col--address">
+                  <col class="status-col--rtt">
+                  <col class="status-col--loss">
+                  <col class="status-col--connected">
+                  <col class="status-col--last-seen">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Name</th>
+                    <th data-status-production-column hidden>Production</th>
+                    <th>Client</th>
+                    <th>Address</th>
+                    <th title="Browser: WebRTC round-trip time. Bridge: API request round-trip time.">RTT</th>
+                    <th title="Browser: WebRTC audio packet loss. Bridge: input RTP packet loss to the server.">Loss</th>
+                    <th>Connected since</th>
+                    <th>Last seen</th>
+                  </tr>
+                </thead>
+                <tbody id="status-users-body">
+                  <tr><td colspan="8" class="status-empty">Loading status...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="status-group">
+            <div class="status-group__heading">
+              <h3>Feeds</h3>
+              <span id="status-feeds-count" class="status-group__count"></span>
+            </div>
+            <div class="status-table-wrap">
+              <table class="status-table status-table--feeds">
+                <colgroup>
+                  <col class="status-col--status">
+                  <col class="status-col--name">
+                  <col class="status-col--production" data-status-production-column hidden>
+                  <col class="status-col--client">
+                  <col class="status-col--address">
+                  <col class="status-col--rtt">
+                  <col class="status-col--loss">
+                  <col class="status-col--connected">
+                  <col class="status-col--last-seen">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Name</th>
+                    <th data-status-production-column aria-hidden="true" hidden></th>
+                    <th>Client</th>
+                    <th>Address</th>
+                    <th title="Browser: WebRTC round-trip time. Bridge: API request round-trip time.">RTT</th>
+                    <th title="Browser: WebRTC audio packet loss. Bridge: input RTP packet loss to the server.">Loss</th>
+                    <th>Connected since</th>
+                    <th>Last seen</th>
+                  </tr>
+                </thead>
+                <tbody id="status-feeds-body">
+                  <tr><td colspan="8" class="status-empty">No feeds configured.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="status-group">
+            <div class="status-group__heading">
+              <h3>Bridge instances</h3>
+              <span id="status-bridges-count" class="status-group__count"></span>
+            </div>
+            <div class="status-table-wrap">
+              <table class="status-table status-table--bridges">
+                <colgroup>
+                  <col class="status-col--status">
+                  <col class="status-col--name">
+                  <col class="status-col--production" data-status-production-column hidden>
+                  <col class="status-col--client">
+                  <col class="status-col--address">
+                  <col class="status-col--rtt">
+                  <col class="status-col--loss">
+                  <col class="status-col--connected">
+                  <col class="status-col--last-seen">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Name</th>
+                    <th data-status-production-column aria-hidden="true" hidden></th>
+                    <th>Client</th>
+                    <th>Address</th>
+                    <th title="Bridge API request round-trip time across active ports">RTT</th>
+                    <th title="Input RTP packet loss from Bridge to server across active ports">Loss</th>
+                    <th>Connected since</th>
+                    <th>Last seen</th>
+                  </tr>
+                </thead>
+                <tbody id="status-bridges-body">
+                  <tr><td colspan="8" class="status-empty">No bridge announced.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="status-group">
+            <div class="status-group__heading">
+              <h3>Companion connections</h3>
+              <span id="status-companions-count" class="status-group__count"></span>
+            </div>
+            <div class="status-table-wrap">
+              <table class="status-table status-table--companions">
+                <colgroup>
+                  <col class="status-col--status">
+                  <col class="status-col--name">
+                  <col class="status-col--production" data-status-production-column hidden>
+                  <col class="status-col--client">
+                  <col class="status-col--address">
+                  <col class="status-col--rtt">
+                  <col class="status-col--loss">
+                  <col class="status-col--connected">
+                  <col class="status-col--last-seen">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Name</th>
+                    <th data-status-production-column aria-hidden="true" hidden></th>
+                    <th>Client</th>
+                    <th>Address</th>
+                    <th title="WebRTC round-trip time between this browser and the server">RTT</th>
+                    <th title="Audio packet loss, cumulative since the current WebRTC transport connected">Loss</th>
+                    <th>Connected since</th>
+                    <th>Last seen</th>
+                  </tr>
+                </thead>
+                <tbody id="status-companions-body">
+                  <tr><td colspan="8" class="status-empty">No Companion instance connected.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p id="status-version" class="status-version"></p>
+        </div>
+      </section>
+
+      <section id="users-section" class="card" aria-labelledby="users-heading">
+        <div class="card-header card-header--toggleable">
+          <div class="card-header__title">
+            <button id="users-section-toggle" type="button" class="card-collapse-toggle" aria-expanded="true" aria-controls="users-section-body" aria-label="Collapse users section"></button>
+            <h2 id="users-heading">Users</h2>
+          </div>
+          <div class="card-header__actions">
+            <div id="user-message" class="flash-message"></div>
+          </div>
+        </div>
+
+        <div id="users-section-body" class="card-section-body">
+          <div class="entity-layout entity-layout--users">
+            <aside class="entity-sidebar">
+              <form id="user-form" class="inline-form entity-create-form" autocomplete="off">
+              <div class="field-group">
+                <label for="username" class="visually-hidden">Name</label>
+                <input type="text" id="username" placeholder="Name" required />
+              </div>
+
+              <div class="field-group">
+                <label for="password" class="visually-hidden">Password</label>
+                <div class="password-input-wrap">
+                  <input type="password" id="password" placeholder="Password" autocomplete="new-password" required />
+                  <button type="button" class="password-toggle" data-password-toggle="password" aria-label="Show password" aria-controls="password" aria-pressed="false" title="Show password">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M2.75 12S6.1 5.75 12 5.75 21.25 12 21.25 12 17.9 18.25 12 18.25 2.75 12 2.75 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M12 15.25A3.25 3.25 0 1 0 12 8.75 3.25 3.25 0 0 0 12 15.25Z" stroke="currentColor" stroke-width="1.8"/>
+                      <path class="password-toggle__slash" d="M4.75 4.75L19.25 19.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" class="small">Add User</button>
+              </form>
+              <div class="entity-search">
+                <input id="user-search" type="search" placeholder="Search users" aria-label="Search users" autocomplete="off" />
+                <button id="user-search-clear" type="button" aria-label="Clear user search" title="Clear search" hidden>&times;</button>
+              </div>
+              <ul id="user-picker" class="entity-picker-list" aria-label="Users"></ul>
+            </aside>
+            <div class="entity-detail-panel">
+              <div id="user-empty" class="entity-empty">Select a user to configure it.</div>
+              <ul id="user-list" class="item-list entity-detail-list" aria-live="polite"></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="conferences-section" class="card" aria-labelledby="conferences-heading">
+        <div class="card-header card-header--toggleable">
+          <div class="card-header__title">
+            <button id="conferences-section-toggle" type="button" class="card-collapse-toggle" aria-expanded="true" aria-controls="conferences-section-body" aria-label="Collapse conferences section"></button>
+            <h2 id="conferences-heading">Conferences</h2>
+          </div>
+          <div class="card-header__actions">
+            <div id="conf-message" class="flash-message"></div>
+          </div>
+        </div>
+
+        <div id="conferences-section-body" class="card-section-body">
+          <div class="entity-layout">
+            <aside class="entity-sidebar">
+              <form id="conf-form" class="inline-form entity-create-form" autocomplete="off">
+              <div class="field-group">
+                <label for="confname" class="visually-hidden">Name</label>
+                <input type="text" id="confname" placeholder="Name" required />
+              </div>
+              <button type="submit" class="small">Add Conference</button>
+              </form>
+              <div class="entity-search">
+                <input id="conference-search" type="search" placeholder="Search conferences" aria-label="Search conferences" autocomplete="off" />
+                <button id="conference-search-clear" type="button" aria-label="Clear conference search" title="Clear search" hidden>&times;</button>
+              </div>
+              <ul id="conference-picker" class="entity-picker-list" aria-label="Conferences"></ul>
+            </aside>
+            <div class="entity-detail-panel">
+              <div id="conference-empty" class="entity-empty">Select a conference to configure it.</div>
+              <ul id="conf-list" class="item-list entity-detail-list" aria-live="polite"></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="feeds-section" class="card" aria-labelledby="feeds-heading">
+        <div class="card-header card-header--toggleable">
+          <div class="card-header__title">
+            <button id="feeds-section-toggle" type="button" class="card-collapse-toggle" aria-expanded="true" aria-controls="feeds-section-body" aria-label="Collapse feeds section"></button>
+            <h2 id="feeds-heading">Feeds (experimental)</h2>
+          </div>
+          <div class="card-header__actions">
+            <div id="feed-message" class="flash-message"></div>
+          </div>
+        </div>
+
+        <div id="feeds-section-body" class="card-section-body">
+          <div class="entity-layout">
+            <aside class="entity-sidebar">
+              <form id="feed-form" class="inline-form entity-create-form" autocomplete="off">
+              <div class="field-group">
+                <label for="feedname" class="visually-hidden">Name</label>
+                <input type="text" id="feedname" placeholder="Name" required />
+              </div>
+              <div class="field-group">
+                <label for="feedpassword" class="visually-hidden">Password</label>
+                <div class="password-input-wrap">
+                  <input type="password" id="feedpassword" placeholder="Password" autocomplete="new-password" required />
+                  <button type="button" class="password-toggle" data-password-toggle="feedpassword" aria-label="Show password" aria-controls="feedpassword" aria-pressed="false" title="Show password">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M2.75 12S6.1 5.75 12 5.75 21.25 12 21.25 12 17.9 18.25 12 18.25 2.75 12 2.75 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M12 15.25A3.25 3.25 0 1 0 12 8.75 3.25 3.25 0 0 0 12 15.25Z" stroke="currentColor" stroke-width="1.8"/>
+                      <path class="password-toggle__slash" d="M4.75 4.75L19.25 19.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <button type="submit" class="small">Add Feed</button>
+              </form>
+              <div class="entity-search">
+                <input id="feed-search" type="search" placeholder="Search feeds" aria-label="Search feeds" autocomplete="off" />
+                <button id="feed-search-clear" type="button" aria-label="Clear feed search" title="Clear search" hidden>&times;</button>
+              </div>
+              <ul id="feed-picker" class="entity-picker-list" aria-label="Feeds"></ul>
+            </aside>
+            <div class="entity-detail-panel">
+              <div id="feed-empty" class="entity-empty">Select a feed to configure it.</div>
+              <ul id="feed-list" class="item-list entity-detail-list" aria-live="polite"></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="matrix-section" class="card" aria-labelledby="matrix-heading">
+        <div class="card-header card-header--toggleable">
+          <div class="card-header__title">
+            <button id="matrix-section-toggle" type="button" class="card-collapse-toggle" aria-expanded="true" aria-controls="matrix-section-body" aria-label="Collapse matrix section"></button>
+            <h2 id="matrix-heading">Matrix</h2>
+          </div>
+          <div class="card-header__actions">
+            <label
+              class="admin-switch"
+              for="multiple-productions-enabled"
+              title="Enable separate matrices for multiple productions. Layouts and memberships stay independent; conferences with the same name remain one global audio channel."
+            >
+              <input type="checkbox" id="multiple-productions-enabled" role="switch" aria-describedby="multiple-productions-description">
+              <span class="admin-switch__track" aria-hidden="true"></span>
+              <span>Multiple Productions</span>
+              <span id="multiple-productions-description" class="visually-hidden">Enable separate matrices for multiple productions. Layouts and memberships stay independent; conferences with the same name remain one global audio channel.</span>
+            </label>
+            <div id="matrix-message" class="flash-message"></div>
+          </div>
+        </div>
+
+        <div id="matrix-section-body" class="card-section-body">
+          <div id="production-layout" class="production-layout production-layout--single">
+            <aside id="production-sidebar" class="production-sidebar" hidden>
+              <form id="production-create-form" class="inline-form" autocomplete="off">
+                <label for="production-create-name" class="visually-hidden">Name</label>
+                <div class="production-create-controls">
+                  <input id="production-create-name" type="text" placeholder="Name" maxlength="100" required />
+                  <button type="submit" class="small">Add Production</button>
+                </div>
+              </form>
+              <div class="entity-search">
+                <input id="production-search" type="search" placeholder="Search productions" aria-label="Search productions" autocomplete="off" />
+                <button id="production-search-clear" type="button" aria-label="Clear production search" title="Clear search" hidden>&times;</button>
+              </div>
+              <ul id="production-list" class="production-list entity-picker-list" aria-label="Matrix layouts"></ul>
+            </aside>
+
+            <div id="production-default-detail" class="production-panel is-hidden">
+              <div class="production-detail-header">
+                <h3>Default</h3>
+              </div>
+              <div class="section-note">Click and drag to set multiple targets at once. Conference membership automatically creates its target button.</div>
+              <h3 class="matrix-subheading">Target buttons</h3>
+              <div id="target-matrix-container" class="target-matrix-wrap" aria-live="polite">
+                <p class="target-matrix-empty">Loading target matrix...</p>
+              </div>
+            </div>
+
+            <div id="production-empty" class="production-panel is-hidden">Select a matrix layout to configure it.</div>
+            <div id="production-detail" class="production-panel is-hidden">
+              <div class="production-detail-header">
+                <h3 id="production-detail-name"></h3>
+                <div id="production-global-actions" class="inline-controls">
+                  <button id="production-rename" type="button" class="small warning">Rename</button>
+                  <button id="production-delete" type="button" class="small danger">Delete</button>
+                </div>
+              </div>
+
+              <div class="production-config-layout">
+                <section class="production-members-panel">
+                  <h3 class="matrix-subheading">Production contents</h3>
+                  <ul id="production-members" class="production-check-list"></ul>
+                </section>
+                <section class="production-matrix-panel">
+                  <h3 class="matrix-subheading">Target buttons</h3>
+                  <div
+                    class="section-note conference-listen-only-legend"
+                    title="Orange conference cells are listen only: the user remains a member and can hear the conference, but cannot speak to it."
+                    aria-label="Conference listen only. Orange conference cells mean that the user remains a member and can hear the conference, but cannot speak to it."
+                  ><span class="conference-listen-only-dot" aria-hidden="true"></span><span>= Conference listen only</span></div>
+                  <div id="production-target-matrix-container" class="target-matrix-wrap" aria-live="polite"></div>
+                </section>
+              </div>
+
+              <div class="production-order-row matrix-subheading--secondary">
+                <h3 class="matrix-subheading">Button order</h3>
+                <select id="production-order-user" aria-label="Select member for button order"></select>
+              </div>
+              <ul id="production-order-list" class="production-order-list"></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="config-section" class="card" aria-labelledby="config-heading">
+        <div class="card-header card-header--toggleable">
+          <div class="card-header__title">
+            <button id="config-section-toggle" type="button" class="card-collapse-toggle" aria-expanded="false" aria-controls="config-section-body" aria-label="Expand config section"></button>
+            <h2 id="config-heading">Config</h2>
+          </div>
+          <div class="card-header__actions">
+            <div id="config-message" class="flash-message"></div>
+          </div>
+        </div>
+
+        <div id="config-section-body" class="card-section-body">
+          <nav class="config-tabs" role="tablist" aria-label="Configuration categories">
+            <button type="button" id="config-network-tab" role="tab" data-config-tab="network" aria-selected="true" aria-controls="config-network-panel" tabindex="0">Network</button>
+            <button type="button" id="config-access-tab" role="tab" data-config-tab="access" aria-selected="false" aria-controls="config-access-panel" tabindex="-1">Access</button>
+            <button type="button" id="config-backups-tab" role="tab" data-config-tab="backups" aria-selected="false" aria-controls="config-backups-panel" tabindex="-1">Backups</button>
+            <button type="button" id="config-clients-tab" role="tab" data-config-tab="clients" aria-selected="false" aria-controls="config-clients-panel" tabindex="-1">Client defaults</button>
+          </nav>
+          <div id="config-network-panel" class="config-category-panel" role="tabpanel" aria-labelledby="config-network-tab" tabindex="0">
+            <div class="config-layout">
+
+
+            <section class="config-panel" aria-labelledby="config-media-network-heading">
+              <h3 id="config-media-network-heading">Media network</h3>
+              <div class="media-network-top">
+
+                <div id="media-network-meta" class="media-network-meta">
+                  <div class="media-network-info">
+                  <div class="setting-meta">
+                    <div><span class="media-network-stat-label">RTC addresses:</span> <strong id="media-network-active-address">Loading...</strong></div>
+                    <div id="media-network-restart-hint">Changes require a server restart to take effect.</div>
+                    <div id="media-network-override-hint" class="is-hidden">An environment override is active. Saved changes will only apply after restart without `PUBLIC_IP` or `TALKTOME_MEDIA_INTERFACE` overrides.</div>
+                  </div>
+                  <div id="media-network-warning" class="media-network-warning is-hidden" role="status"></div>
+                  </div>
+
+              <form id="media-network-form" class="inline-form" autocomplete="off">
+                <div class="field-group field-group--stacked" id="media-network-mode-group">
+                  <label for="media-network-mode">Mode</label>
+                  <select id="media-network-mode" required>
+                    <option value="auto">Automatic (all adapters)</option>
+                    <option value="interface">Selected network adapters</option>
+                    <option value="manual">Manual announced IP / hostname</option>
+                  </select>
+                </div>
+
+                <div class="field-group field-group--stacked" id="media-interface-group">
+                  <span id="media-interface-label" class="media-interface-label">Network adapters</span>
+                  <div id="media-interface-name" class="media-adapter-options" role="group" aria-labelledby="media-interface-label"></div>
+                </div>
+
+                <div class="field-group field-group--stacked" id="media-announced-address-group">
+                  <label for="media-announced-address">Announced IP / hostname</label>
+                  <input type="text" id="media-announced-address" />
+                </div>
+
+                <div id="media-network-qr" class="media-network-qr-card is-hidden" role="group" aria-label="Active media network QR codes"></div>
+
+                <div id="media-network-actions">
+                  <button type="submit">Save</button>
+                </div>
+              </form>
+                </div>
+
+
+              </div>
+            </section>
+
+            <section class="config-panel" aria-labelledby="config-rtc-ports-heading">
+              <h3 id="config-rtc-ports-heading">RTC port range</h3>
+
+              <div class="setting-meta">
+                <div>Active RTC ports: <strong id="rtc-ports-active-range">Loading...</strong></div>
+                <div id="rtc-ports-restart-hint">Changes require a server restart to take effect.</div>
+                <div id="rtc-ports-override-hint" class="is-hidden">An environment override is active. Saved changes will only apply after restart without `TALKTOME_RTC_PORT_START` or `TALKTOME_RTC_PORT_COUNT` overrides.</div>
+              </div>
+
+              <form id="rtc-ports-form" class="rtc-port-form" autocomplete="off">
+                <div class="field-group field-group--stacked">
+                  <label for="rtc-port-start">Start port</label>
+                  <input type="number" id="rtc-port-start" min="1" max="65535" step="1" placeholder="40000" />
+                </div>
+
+                <div class="field-group field-group--stacked">
+                  <label for="rtc-port-count">Number of ports</label>
+                  <input type="number" id="rtc-port-count" min="1" max="65535" step="1" placeholder="10000" />
+                </div>
+
+                <button type="submit">Save</button>
+              </form>
+            </section>
+
+            <section class="config-panel" aria-labelledby="config-network-heading">
+              <h3 id="config-network-heading">Network alias</h3>
+
+              <div class="setting-meta">
+                <div>Active mDNS alias: <strong id="mdns-active-host">Loading...</strong></div>
+                <div id="mdns-restart-hint">Changes require a server restart to take effect.</div>
+                <div id="mdns-container-hint" class="is-hidden">Docker/container deployments should usually keep mDNS set to <strong>off</strong>. Use the host LAN IP or DNS name instead.</div>
+              </div>
+
+              <form id="mdns-form" class="inline-form" autocomplete="off">
+                <div class="field-group field-group--stacked">
+                  <label for="mdns-host">mDNS name</label>
+                  <input type="text" id="mdns-host" required />
+                </div>
+                <button type="submit">Save</button>
+              </form>
+            </section>
+
+            <section id="container-restart-panel" class="config-panel is-hidden" aria-labelledby="container-restart-heading">
+              <h3 id="container-restart-heading">Server restart</h3>
+              <div class="setting-meta">
+                <div>Restarts the server. Connected clients will be disconnected briefly.</div>
+                <div>Docker deployments use their configured restart policy.</div>
+              </div>
+              <button type="button" id="container-restart-btn" class="warning">Restart server</button>
+            </section>
+
+            <section class="config-panel" aria-labelledby="config-web-access-heading">
+              <h3 id="config-web-access-heading">Web access</h3>
+              <div class="setting-meta">
+                <div>Active web access: <strong id="web-access-active">Loading...</strong></div>
+                <div id="web-access-restart-hint">Changes require a server restart to take effect.</div>
+                <div>In reverse-proxy mode, open the public HTTPS URL for microphone access. Keep the HTTP backend on a private network.</div>
+                <div id="web-access-override-hint" class="is-hidden"></div>
+              </div>
+              <form id="web-access-form" class="inline-form" autocomplete="off">
+                <div class="field-group field-group--stacked">
+                  <label for="web-access-mode">TLS mode</label>
+                  <select id="web-access-mode"><option value="internal">Built-in HTTPS</option><option value="proxy">HTTPS via reverse proxy</option></select>
+                </div>
+                <div class="field-group field-group--stacked">
+                  <label for="web-access-port">Backend port</label>
+                  <input id="web-access-port" type="number" min="1" max="65535" required />
+                </div>
+                <div class="field-group field-group--stacked">
+                  <label for="web-access-public-url">Public HTTPS URL (optional)</label>
+                  <input id="web-access-public-url" type="url" placeholder="https://linktalk.example.com:55443" aria-describedby="web-access-public-url-hint" />
+                  <div id="web-access-public-url-hint" class="setting-meta">Address clients use to reach this server, including the external port if needed. Used for shared links and QR codes in both TLS modes. Does not change the backend port or Docker port mapping.</div>
+                </div>
+                <div class="field-group field-group--stacked is-hidden" data-web-access-proxy-field>
+                  <label for="web-access-trusted-proxies">Trusted proxy IPs / CIDRs (comma-separated)</label>
+                  <input id="web-access-trusted-proxies" type="text" placeholder="172.20.0.2" />
+                </div>
+                <button type="submit">Save</button>
+              </form>
+            </section>
+            </div>
+          </div>
+          <div id="config-access-panel" class="config-category-panel" role="tabpanel" aria-labelledby="config-access-tab" tabindex="0" hidden>
+            <div class="config-layout">
+            <section class="config-panel" aria-labelledby="config-guest-login-heading">
+              <h3 id="config-guest-login-heading">Guest login</h3>
+
+              <div class="guest-login-content">
+                <div class="setting-meta">
+                  <div>Status: <strong id="guest-login-status">Loading...</strong></div>
+                  <div>Shared target profile: <strong id="guest-login-profile">Loading...</strong></div>
+                </div>
+
+                <form id="guest-login-form" class="guest-login-form" autocomplete="off">
+                  <label class="admin-switch" for="guest-login-enabled">
+                    <span class="visually-hidden">Allow passwordless Guest login</span>
+                    <input type="checkbox" id="guest-login-enabled" role="switch" />
+                    <span class="admin-switch__track" aria-hidden="true"></span>
+                  </label>
+                </form>
+              </div>
+            </section>
+
+            <section class="config-panel" aria-labelledby="config-api-key-heading">
+              <h3 id="config-api-key-heading">API key</h3>
+
+              <div class="setting-meta">
+                <div>View or copy the global API key for Companion, Bridge and automation clients.</div>
+              </div>
+
+              <div class="api-key-controls">
+                <div class="password-input-wrap api-key-field">
+                  <input type="password" id="api-key-value" value="" placeholder="Loading…" readonly autocomplete="off" spellcheck="false" aria-label="Global API key" />
+                  <button type="button" class="password-toggle" data-password-toggle="api-key-value" aria-label="Show API key" aria-controls="api-key-value" aria-pressed="false" title="Show API key">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M2.75 12S6.15 6.75 12 6.75S21.25 12 21.25 12S17.85 17.25 12 17.25S2.75 12 2.75 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.8"/>
+                      <path class="password-toggle__slash" d="M4.75 4.75L19.25 19.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="api-key-actions">
+                  <button type="button" id="api-key-regenerate-btn" class="warning">Regenerate</button>
+                  <button type="button" id="api-key-copy-btn">Copy API key</button>
+                </div>
+              </div>
+            </section>
+            </div>
+          </div>
+          <div id="config-backups-panel" class="config-category-panel" role="tabpanel" aria-labelledby="config-backups-tab" tabindex="0" hidden>
+            <div class="config-layout">
+            <section class="config-panel config-backup-panel" aria-label="Backup settings">
+              <div class="config-transfer-grid">
+                <div class="config-transfer-card">
+                  <h4>Export backup</h4>
+                  <p class="config-transfer-description">Download a copy of the current configuration as a JSON file.</p>
+                  <div class="config-transfer-actions">
+                    <button type="button" id="config-export-btn">Export config</button>
+                  </div>
+                </div>
+
+                <div class="config-transfer-card">
+                  <h4>Restore from backup</h4>
+                  <p class="config-transfer-description">Choose a previously exported Talktome configuration.</p>
+                  <div class="config-import-row">
+                    <label class="config-file-picker" for="config-import-file">
+                      <span>Choose JSON backup</span>
+                      <span id="config-import-filename" aria-live="polite">No file selected</span>
+                      <input type="file" id="config-import-file" class="visually-hidden" accept=".json,application/json" aria-label="Choose JSON backup" />
+                    </label>
+                    <button type="button" id="config-import-btn" class="warning" disabled>Import config</button>
+                  </div>
+                </div>
+              </div>
+
+              <form id="config-auto-backup-form" class="config-auto-backup-form is-collapsed">
+                <div class="config-auto-backup-header">
+                  <label class="config-auto-backup-toggle">
+                    <span class="config-auto-backup-title">
+                      <strong>Automatic backups</strong>
+                      <span>Keep scheduled copies of your configuration.</span>
+                    </span>
+                    <span class="admin-switch">
+                      <input type="checkbox" id="config-auto-backup-enabled" role="switch" aria-label="Automatic backups" />
+                      <span class="admin-switch__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                  <div class="config-auto-backup-actions">
+                    <button type="submit">Save</button>
+                  </div>
+                </div>
+                <div id="config-auto-backup-details" class="config-auto-backup-details" hidden>
+                  <label class="config-auto-backup-interval" id="config-auto-backup-interval-field" for="config-auto-backup-interval" hidden>
+                    <span>Backup interval</span>
+                    <select id="config-auto-backup-interval">
+                      <option value="1">1 day</option>
+                      <option value="3">3 days</option>
+                      <option value="7" selected>7 days</option>
+                      <option value="14">14 days</option>
+                      <option value="30">30 days</option>
+                    </select>
+                  </label>
+                  <div class="config-auto-backup-footer">
+                    <div class="config-auto-backup-time" hidden>Last backup<span id="config-auto-backup-last" aria-live="polite">Never</span></div>
+                    <div class="config-auto-backup-time" hidden>Next backup<span id="config-auto-backup-next" aria-live="polite">Disabled</span></div>
+                  </div>
+                  <div class="config-auto-backup-status" id="config-auto-backup-status" hidden>
+                    <div>Storage location: <code id="config-auto-backup-directory">Loading…</code></div>
+                  </div>
+                </div>
+                <div id="config-auto-backup-error" class="is-hidden" aria-live="polite"></div>
+              </form>
+            </section>
+            </div>
+          </div>
+          <div id="config-clients-panel" class="config-category-panel" role="tabpanel" aria-labelledby="config-clients-tab" tabindex="0" hidden>
+            <div class="config-layout">
+            <section class="config-panel default-client-settings-panel" aria-label="Client defaults">
+              <div class="setting-meta">
+                <div>Defaults apply until a client saves their own preferences.</div>
+              </div>
+
+              <form id="default-client-settings-form" class="default-client-settings-form" autocomplete="off">
+                <div class="default-client-settings-selects">
+                  <div class="default-client-setting-field">
+                    <label for="default-client-audio-profile">Audio profile</label>
+                    <select id="default-client-audio-profile">
+                      <option value="ultra-low">Ultra low (5 ms frame)</option>
+                      <option value="low">Low (10 ms frame)</option>
+                      <option value="standard">Standard (20 ms frame)</option>
+                    </select>
+                  </div>
+                  <div class="default-client-setting-field">
+                    <label for="default-client-dim-amount">Dim amount</label>
+                    <select id="default-client-dim-amount">
+                      <option value="-6">-6 dB</option>
+                      <option value="-12">-12 dB</option>
+                      <option value="-15">-15 dB</option>
+                      <option value="-18">-18 dB</option>
+                      <option value="-24">-24 dB</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="default-client-settings-toggles">
+                  <label class="default-client-setting-toggle">
+                    <span>Dim feeds while speaking</span>
+                    <span class="admin-switch">
+                      <input type="checkbox" id="default-client-dim-self" role="switch" />
+                      <span class="admin-switch__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                  <label class="default-client-setting-toggle">
+                    <span>Dim feeds when addressed</span>
+                    <span class="admin-switch">
+                      <input type="checkbox" id="default-client-dim-incoming" role="switch" />
+                      <span class="admin-switch__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                  <label class="default-client-setting-toggle">
+                    <span>Audio auto processing</span>
+                    <span class="admin-switch">
+                      <input type="checkbox" id="default-client-audio-processing" role="switch" />
+                      <span class="admin-switch__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                  <label class="default-client-setting-toggle">
+                    <span>Play connection sounds</span>
+                    <span class="admin-switch">
+                      <input type="checkbox" id="default-client-connection-sounds" role="switch" />
+                      <span class="admin-switch__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                  <label class="default-client-setting-toggle">
+                    <span>Incoming level meters</span>
+                    <span class="admin-switch">
+                      <input type="checkbox" id="default-client-incoming-levels" role="switch" />
+                      <span class="admin-switch__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                  <label class="default-client-setting-toggle">
+                    <span>Left-hand mode</span>
+                    <span class="admin-switch">
+                      <input type="checkbox" id="default-client-left-hand" role="switch" />
+                      <span class="admin-switch__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                  <label
+                    class="default-client-setting-toggle"
+                    title="Keep locked targets active while temporarily talking to or locking additional targets."
+                  >
+                    <span>Lock multiple targets</span>
+                    <span class="admin-switch">
+                      <input type="checkbox" id="default-client-lock-multiple" role="switch" />
+                      <span class="admin-switch__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                  <label class="default-client-setting-toggle" title="Allow users to change the order of their target buttons. Can be overridden per user.">
+                    <span>Allow target rearrange</span>
+                    <span class="admin-switch">
+                      <input type="checkbox" id="default-client-allow-target-rearrange" role="switch" />
+                      <span class="admin-switch__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                </div>
+                <div class="default-client-settings-actions">
+                  <button type="submit">Save</button>
+                </div>
+              </form>
+            </section>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </main>
+
+    <div id="admin-image-lightbox" class="image-lightbox is-hidden" role="dialog" aria-modal="true" aria-labelledby="admin-image-lightbox-title">
+      <div class="image-lightbox__dialog">
+        <button type="button" id="admin-image-lightbox-close" class="image-lightbox__close" aria-label="Close image preview">&times;</button>
+        <h2 id="admin-image-lightbox-title" class="image-lightbox__title">Connection QR code</h2>
+        <div class="image-lightbox__image-wrap">
+          <img id="admin-image-lightbox-image" class="image-lightbox__image" alt="Large connection QR code" />
+        </div>
+        <div class="image-lightbox__actions">
+          <button type="button" id="admin-image-lightbox-download" class="small icon-button image-lightbox__download" aria-label="Download QR code" title="Download QR code">
+            <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 3.5V11.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6.75 8.5L10 11.75L13.25 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 14.25H16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <span>Download</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="admin-action-dialog" class="admin-action-dialog is-hidden" role="dialog" aria-modal="true" aria-labelledby="admin-action-dialog-title" aria-describedby="admin-action-dialog-message">
+      <form id="admin-action-dialog-form" class="admin-action-dialog__panel" autocomplete="off">
+        <h2 id="admin-action-dialog-title" class="admin-action-dialog__title">Confirm action</h2>
+        <p id="admin-action-dialog-message" class="admin-action-dialog__message"></p>
+        <label id="admin-action-dialog-field" class="admin-action-dialog__field is-hidden" for="admin-action-dialog-input">
+          <span id="admin-action-dialog-label">Value</span>
+          <div class="password-input-wrap">
+            <input id="admin-action-dialog-input" type="text" />
+            <button type="button" id="admin-action-dialog-password-toggle" class="password-toggle is-hidden" data-password-toggle="admin-action-dialog-input" aria-label="Show password" aria-controls="admin-action-dialog-input" aria-pressed="false" title="Show password">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.75 12S6.1 5.75 12 5.75 21.25 12 21.25 12 17.9 18.25 12 18.25 2.75 12 2.75 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 15.25A3.25 3.25 0 1 0 12 8.75 3.25 3.25 0 0 0 12 15.25Z" stroke="currentColor" stroke-width="1.8"/>
+                <path class="password-toggle__slash" d="M4.75 4.75L19.25 19.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </label>
+        <div id="admin-action-dialog-error" class="admin-action-dialog__error is-hidden" aria-live="polite"></div>
+        <div class="admin-action-dialog__actions">
+          <button type="button" id="admin-action-dialog-cancel" class="admin-action-dialog__cancel">Cancel</button>
+          <button type="submit" id="admin-action-dialog-confirm" class="admin-action-dialog__confirm">Confirm</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="user-audio-settings-dialog" class="user-audio-settings-dialog is-hidden" role="dialog" aria-modal="true" aria-labelledby="user-audio-settings-title">
+      <form id="user-audio-settings-form" class="user-audio-settings-dialog__panel">
+        <div class="user-audio-settings-dialog__header">
+          <h2 id="user-audio-settings-title">Audio settings</h2>
+          <button type="button" class="user-audio-settings-dialog__close" id="user-audio-settings-close" aria-label="Close">&times;</button>
+        </div>
+        <div id="user-audio-settings-notice" class="user-audio-settings-notice is-hidden" role="note">
+          This user is configured as a Bridge endpoint. These settings apply only when the user is logged in through a browser and do not affect Bridge audio.
+        </div>
+        <div id="user-audio-settings-fields" class="user-audio-settings-form"></div>
+        <div id="user-audio-settings-error" class="user-audio-settings-error is-hidden" aria-live="polite"></div>
+        <div class="user-audio-settings-dialog__actions admin-action-dialog__actions">
+          <button type="button" id="user-audio-settings-cancel" class="admin-action-dialog__cancel">Cancel</button>
+          <button type="submit" id="user-audio-settings-save" class="admin-action-dialog__confirm">Save</button>
+        </div>
+      </form>
+    </div>
+
+    <script src="/userAudioSettings.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>

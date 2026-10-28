@@ -1,0 +1,311 @@
+/* ============================================================================
+ * LinkTalk UI — дизайн-система «Signal» для веб-клиента и админки.
+ * Разработчик: makss1c · https://t.me/makss1c
+ * Общая идея с мобильным приложением: глубокий чёрный фон, слои поверхностей вместо рамок,
+ * крупные скругления, один акцент — оранжевый, свечение вместо светодиодных полос.
+ * Файл подключается ПОСЛЕ встроенных стилей страниц и переопределяет их.
+ * ========================================================================== */
+:root {
+  --lt-bg: #060606;
+  --lt-s1: #101011;
+  --lt-s2: #171718;
+  --lt-s3: #212123;
+  --lt-line: rgba(255, 255, 255, 0.08);
+  --lt-line-strong: rgba(255, 255, 255, 0.16);
+  --lt-text: #f6f2ed;
+  --lt-muted: rgba(246, 242, 237, 0.62);
+  --lt-dim: rgba(246, 242, 237, 0.38);
+  --lt-accent: #ff6b1a;
+  --lt-accent-deep: #d94f00;
+  --lt-accent-soft: rgba(255, 107, 26, 0.14);
+  --lt-accent-line: rgba(255, 107, 26, 0.45);
+  --lt-amber: #ffb547;
+  --lt-glow: 0 0 0 1px var(--lt-accent-line), 0 8px 32px rgba(255, 107, 26, 0.22);
+  --lt-r-sm: 12px;
+  --lt-r-md: 18px;
+  --lt-r-lg: 26px;
+  --lt-font: "Inter", "Segoe UI", system-ui, -apple-system, "Roboto", sans-serif;
+  --lt-display: "Bahnschrift", "Roboto Condensed", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
+  --lt-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+
+html body {
+  background: radial-gradient(1200px 600px at 85% -10%, rgba(255, 107, 26, 0.10), transparent 60%), var(--lt-bg);
+  color: var(--lt-text);
+  font-family: var(--lt-font);
+  -webkit-font-smoothing: antialiased;
+}
+html body ::selection { background: var(--lt-accent); color: #140700; }
+html body * { scrollbar-color: #2c2c2f transparent; scrollbar-width: thin; }
+html body *:focus-visible { outline: 2px solid var(--lt-accent); outline-offset: 2px; }
+
+/* ---------- заголовки ---------- */
+html body h1, html body h2, html body h3 {
+  font-family: var(--lt-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lt-text);
+}
+
+/* ---------- кнопки ---------- */
+html body button {
+  font-family: var(--lt-font);
+  background: var(--lt-s2);
+  color: var(--lt-text);
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-r-sm);
+  transition: background .15s ease, border-color .15s ease, transform .1s ease, box-shadow .15s ease;
+}
+html body button:hover:not(:disabled) { background: var(--lt-s3); border-color: var(--lt-line-strong); }
+html body button:active:not(:disabled) { transform: scale(0.98); }
+html body button:disabled { opacity: .45; }
+html body button[type="submit"],
+html body .login-submit,
+html body button.primary {
+  background: var(--lt-accent);
+  border-color: var(--lt-accent);
+  color: #140700;
+  font-weight: 800;
+  letter-spacing: .03em;
+  border-radius: 999px;
+}
+html body button[type="submit"]:hover:not(:disabled),
+html body .login-submit:hover:not(:disabled) { background: #ff8238; border-color: #ff8238; box-shadow: var(--lt-glow); }
+
+/* ---------- поля ввода ---------- */
+html body input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+html body select,
+html body textarea {
+  background: var(--lt-s2);
+  color: var(--lt-text);
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-r-sm);
+  font-family: var(--lt-font);
+}
+html body input:focus, html body select:focus, html body textarea:focus {
+  border-color: var(--lt-accent);
+  box-shadow: 0 0 0 3px var(--lt-accent-soft);
+  outline: none;
+}
+html body input::placeholder { color: var(--lt-dim); }
+html body input[type="checkbox"], html body input[type="radio"], html body input[type="range"] { accent-color: var(--lt-accent); }
+
+/* ---------- таблицы ---------- */
+html body table { border-collapse: separate; border-spacing: 0; }
+html body th {
+  font-family: var(--lt-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--lt-dim);
+  border-bottom: 1px solid var(--lt-line);
+}
+html body td { border-bottom: 1px solid var(--lt-line); }
+html body tbody tr:hover td { background: rgba(255, 107, 26, 0.05); }
+
+/* ---------- переключатель языка ---------- */
+.lt-lang {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--lt-s2);
+  border: 1px solid var(--lt-line);
+  border-radius: 999px;
+}
+.lt-lang button {
+  min-height: 0;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lt-muted);
+  font: 700 11px/1 var(--lt-mono);
+  letter-spacing: .12em;
+  cursor: pointer;
+}
+.lt-lang button:hover:not(:disabled) { background: transparent; color: var(--lt-text); }
+.lt-lang button.is-on, .lt-lang button[aria-pressed="true"] { background: var(--lt-accent); color: #140700; }
+.lt-lang--float { position: absolute; top: 14px; right: 14px; z-index: 5; }
+.lt-lang--corner { position: fixed; top: 12px; right: 12px; }
+
+/* ---------- окно входа ---------- */
+html body .login-overlay { background: radial-gradient(800px 500px at 50% 0%, rgba(255, 107, 26, 0.16), transparent 70%), rgba(6, 6, 6, 0.94); backdrop-filter: blur(6px); }
+html body .login-card {
+  position: relative;
+  background: var(--lt-s1);
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-r-lg);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  padding: 2.2rem 2rem 1.8rem;
+}
+html body .login-brand__icon { border-radius: 16px; }
+html body .login-title { font-family: var(--lt-display); font-size: 1.7rem; letter-spacing: .06em; text-transform: uppercase; }
+html body .login-field label { font: 600 11px/1 var(--lt-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--lt-dim); }
+html body .login-input { padding: .85rem 1rem; }
+html body .login-submit { padding: .95rem 1rem; font-size: 1rem; }
+html body .login-switch-link { color: var(--lt-accent); }
+html body .login-message { color: var(--lt-amber); }
+
+/* ========================================================================
+ * АДМИНКА: боковая панель-рейка вместо верхней полосы
+ * ====================================================================== */
+html body .admin-bar {
+  position: fixed !important;
+  inset: 0 auto 0 0 !important;
+  left: 0 !important;
+  transform: none !important;
+  grid-template-columns: none !important;
+  width: 252px !important;
+  height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 18px !important;
+  padding: 22px 14px 16px !important;
+  background: var(--lt-s1) !important;
+  border: 0 !important;
+  border-right: 1px solid var(--lt-line) !important;
+  box-shadow: none !important;
+  overflow-y: auto !important;
+  z-index: 60 !important;
+}
+html body .admin-bar.is-hidden { display: none !important; }
+html body .admin-bar__meta { display: flex; align-items: center; gap: 12px; padding: 0 8px 14px; border-bottom: 1px solid var(--lt-line); color: var(--lt-muted); font-size: 12px; }
+html body .admin-bar__meta strong { display: block; color: var(--lt-text); font-size: 14px; }
+html body .admin-brand-icon { width: 40px; height: 40px; border-radius: 12px; }
+html body .admin-bar__nav { display: flex !important; flex-direction: column !important; gap: 4px !important; flex: 1 1 auto; }
+html body .admin-bar__nav a {
+  display: block;
+  padding: 12px 14px;
+  border-radius: var(--lt-r-sm);
+  color: var(--lt-muted);
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-decoration: none;
+  border: 1px solid transparent;
+  background: transparent;
+}
+html body .admin-bar__nav a:hover { background: var(--lt-s2); color: var(--lt-text); }
+html body .admin-bar__nav a[aria-current="location"] {
+  background: var(--lt-accent-soft);
+  color: var(--lt-accent);
+  border-color: var(--lt-accent-line);
+}
+html body .admin-bar__actions { display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 10px !important; margin: 0 !important; }
+html body .admin-bar__actions .lt-lang { align-self: flex-start; }
+html body #admin-logout { width: 100%; padding: 11px; border-radius: 999px; }
+html body main#admin-app, html body .admin-bar.has-expanded-message + main {
+  margin: 0 0 0 252px !important;
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 26px 32px 64px !important;
+  max-width: none !important;
+}
+html body main#admin-app > * { min-width: 0; }
+html body main#admin-app .table-wrap, html body main#admin-app .card-body { overflow-x: auto; }
+
+/* карточки-разделы */
+html body main > .card, html body .card {
+  background: var(--lt-s1);
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-r-lg);
+  box-shadow: none;
+}
+html body .card-header { border-bottom: 1px solid var(--lt-line); }
+html body .card-header h2, html body .card-header__title h2 { font-size: 1.15rem; }
+html body .card-collapse-toggle { border-radius: 10px; }
+html body .status-summary__item { background: var(--lt-s2); border: 1px solid var(--lt-line); border-radius: var(--lt-r-md); }
+html body .status-summary__label { font: 600 11px/1 var(--lt-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--lt-dim); }
+html body .status-summary__value { font-family: var(--lt-display); font-size: 1.6rem; color: var(--lt-accent); }
+html body .flash-message.is-visible, html body .flash-success { border-radius: var(--lt-r-sm); }
+
+@media (max-width: 900px) {
+  html body .admin-bar {
+    position: sticky !important;
+    inset: 0 0 auto 0 !important;
+    width: auto !important;
+    height: auto !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: wrap;
+    padding: 10px 12px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--lt-line) !important;
+  }
+  html body .admin-bar__meta { border: 0; padding: 0; }
+  html body .admin-bar__nav { flex-direction: row !important; overflow-x: auto; order: 3; flex: 1 0 100%; }
+  html body .admin-bar__actions { flex-direction: row !important; align-items: center !important; margin-left: auto !important; }
+  html body #admin-logout { width: auto; padding: 9px 16px; }
+  html body main#admin-app, html body .admin-bar.has-expanded-message + main { margin-left: 0 !important; padding: 16px 12px 48px !important; }
+}
+
+/* ========================================================================
+ * ВЕБ-КЛИЕНТ: плавающая верхняя панель, карточки каналов
+ * ====================================================================== */
+html body .session-bar {
+  background: rgba(16, 16, 17, 0.86);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-r-md);
+}
+html body .session-brand-icon { border-radius: 10px; }
+html body .media-connection-status { border-radius: 999px; background: var(--lt-s2); border: 1px solid var(--lt-line); font-family: var(--lt-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+html body .media-connection-status.is-connected .media-connection-status__dot { background: var(--lt-accent); box-shadow: 0 0 10px var(--lt-accent); }
+html body .target-layer-switcher button { border-radius: 999px; }
+html body .reply-bar button {
+  border-radius: 999px;
+  background: var(--lt-accent-soft);
+  border: 1px solid var(--lt-accent-line);
+  color: var(--lt-accent);
+  font-family: var(--lt-display);
+  font-size: 1.2rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+html body .reply-bar button:hover:not(:disabled) { background: var(--lt-accent); color: #140700; }
+
+html body #targets-list li.target-item {
+  background: var(--lt-s1);
+  border: 1px solid var(--lt-line);
+  border-radius: var(--lt-r-md);
+  transition: border-color .15s ease, box-shadow .2s ease, background .15s ease;
+}
+html body #targets-list li.target-item:hover { border-color: var(--lt-line-strong); }
+html body #targets-list li.target-item.is-offline { opacity: .55; background: #0b0b0c; }
+html body #targets-list li.target-item.speaking { border-color: var(--lt-amber); box-shadow: 0 0 0 1px rgba(255, 181, 71, .5), 0 10px 30px rgba(255, 181, 71, .14); }
+html body #targets-list li.target-item.talking-to { border-color: var(--lt-accent); background: var(--lt-accent-soft); box-shadow: var(--lt-glow); }
+html body #targets-list li.target-item .talk-btn { border-radius: 999px; }
+html body .target-level-meter { border-radius: 999px; background: var(--lt-s3); }
+html body .target-level-meter__fill { background: linear-gradient(90deg, var(--lt-accent-deep), var(--lt-accent), var(--lt-amber)); border-radius: 999px; }
+
+html body .settings-panel, html body .settings-body { border-radius: var(--lt-r-lg); }
+html body .settings-nav-button { border-radius: var(--lt-r-md); }
+html body .settings-nav-button__title { font-weight: 700; }
+html body .settings-nav-button__desc { color: var(--lt-muted); }
+
+/* ========================================================================
+ * Страница «О программе»
+ * ====================================================================== */
+.about-page { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+.about-page .about-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.about-page .about-brand { display: flex; align-items: center; gap: 14px; }
+.about-page .about-brand img { width: 56px; height: 56px; border-radius: 16px; }
+.about-page .about-word { font: 900 2rem/1 var(--lt-display); letter-spacing: .12em; }
+.about-page .about-word b { color: var(--lt-accent); }
+.about-card { background: var(--lt-s1); border: 1px solid var(--lt-line); border-radius: var(--lt-r-lg); padding: 22px 24px; margin-bottom: 16px; }
+.about-card h2 { margin: 0 0 12px; font-size: .78rem; font-family: var(--lt-mono); letter-spacing: .2em; color: var(--lt-accent); }
+.about-card p { margin: 0 0 10px; line-height: 1.55; color: var(--lt-muted); }
+.about-card a { color: var(--lt-accent); text-decoration: none; }
+.about-links { display: grid; gap: 8px; }
+.about-links a { display: flex; justify-content: space-between; gap: 12px; padding: 13px 16px; background: var(--lt-s2); border: 1px solid var(--lt-line); border-radius: var(--lt-r-sm); color: var(--lt-text); }
+.about-links a span:first-child { font: 600 11px/1.6 var(--lt-mono); letter-spacing: .14em; color: var(--lt-dim); }
+.about-links a span:last-child { color: var(--lt-accent); font-weight: 700; }
+.about-meta { font: 11px/1.6 var(--lt-mono); color: var(--lt-dim); text-align: center; margin-top: 24px; }
+
+/* --- вход: заголовок и подпись не вылезают из карточки --- */
+html body .login-brand { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding-right: 92px; }
+html body .login-brand .login-title { flex: 1 1 120px; min-width: 0; margin: 0; font-size: 1.02rem; letter-spacing: .03em; line-height: 1.2; overflow-wrap: break-word; hyphens: none; }
+html body .login-brand .linktalk-credit { flex: 0 0 100%; margin: 4px 0 0; text-align: left; }

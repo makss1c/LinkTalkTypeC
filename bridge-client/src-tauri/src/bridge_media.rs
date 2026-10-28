@@ -1,0 +1,1566 @@
+use std::collections::{HashMap, VecDeque};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::{ToSocketAddrs, UdpSocket};
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command, Stdio};
+use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
+use std::sync::{
+    atomic::{AtomicI32, AtomicU64, Ordering},
+    Arc, Mutex,
+};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+use cpal::traits::{DeviceTrait, StreamTrait};
+use cpal::{
+    ErrorKind, SampleFormat, SampleRate, Stream, StreamConfig, SupportedStreamConfigRange,
+    SAMPLE_RATE_48K,
+};
+use serde::{Deserialize, Serialize};
+
+use crate::audio;
+use crate::network_audio;
+use crate::port_audio_level::{AudioGain, PortAudioLevel};
+
+const OUTPUT_QUEUE_LIMIT_FRAMES: usize = 9_600;
+const DECODER_STARTUP_GRACE_MS: u64 = 10;
+const OUTPUT_HANDSHAKE_ATTEMPTS: usize = 3;
+const OUTPUT_HANDSHAKE_INTERVAL_MS: u64 = 15;
+const OUTPUT_HANDSHAKE_SSRC: u32 = 0x5441_4c4b;
+const FFMPEG_ENV_VAR: &str = "TALKTOME_FFMPEG";
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+fn ffmpeg_command() -> Command {
+    let mut command =
+        Command::new(resolve_ffmpeg_path().unwrap_or_else(|| PathBuf::from("ffmpeg")));
+    configure_ffmpeg_command(&mut command);
+    command
+}
+
+fn spawn_ffmpeg_stderr_reader(
+    stream: impl Read + Send + 'static,
+    stream_id: String,
+    direction: &'static str,
+    warning_count: Arc<AtomicU64>,
+    last_warning: Arc<Mutex<Option<String>>>,
+) -> JoinHandle<()> {
+    thread::spawn(move || {
+        for line in BufReader::new(stream).lines().map_while(Result::ok) {
+            let message = line.trim();
+            if message.is_empty() {
+                continue;
+            }
+            warning_count.fetch_add(1, Ordering::Relaxed);
+            if let Ok(mut latest) = last_warning.lock() {
+                *latest = Some(message.to_string());
+            }
+            eprintln!("[bridge-media][{direction}][{stream_id}][ffmpeg] {message}");
+        }
+    })
+}
+
+#[cfg(windows)]
+fn configure_ffmpeg_command(command: &mut Command) {
+    command.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(windows))]
+fn configure_ffmpeg_command(_command: &mut Command) {}
+
+fn resolve_ffmpeg_path() -> Option<PathBuf> {
+    if let Ok(path) = std::env::var(FFMPEG_ENV_VAR) {
+        let path = PathBuf::from(path);
+        if path.is_file() {
+            return Some(path);
+        }
+    }
+
+    let executable = std::env::current_exe().ok()?;
+    let executable_dir = executable.parent()?;
+    let mut candidates = Vec::new();
+
+    push_ffmpeg_candidates(&mut candidates, executable_dir);
+    push_ffmpeg_candidates(&mut candidates, &executable_dir.join("binaries"));
+
+    if let Some(contents_dir) = executable_dir.parent() {
+        push_ffmpeg_candidates(&mut candidates, &contents_dir.join("Resources"));
+        push_ffmpeg_candidates(
+            &mut candidates,
+            &contents_dir.join("Resources").join("binaries"),
+        );
+    }
+
+    for ancestor in executable_dir.ancestors().take(6) {
+        push_ffmpeg_candidates(&mut candidates, &ancestor.join("binaries"));
+    }
+
+    candidates.into_iter().find(|path| path.is_file())
+}
+
+fn push_ffmpeg_candidates(candidates: &mut Vec<PathBuf>, directory: &Path) {
+    for name in ffmpeg_binary_names() {
+        candidates.push(directory.join(name));
+    }
+}
+
+fn ffmpeg_binary_names() -> &'static [&'static str] {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        &["ffmpeg-aarch64-apple-darwin", "ffmpeg"]
+    }
+
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    {
+        &["ffmpeg-x86_64-apple-darwin", "ffmpeg"]
+    }
+
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    {
+        &["ffmpeg-x86_64-pc-windows-msvc.exe", "ffmpeg.exe"]
+    }
+
+    #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
+    {
+        &["ffmpeg-aarch64-pc-windows-msvc.exe", "ffmpeg.exe"]
+    }
+
+    #[cfg(not(any(
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "macos", target_arch = "x86_64"),
+        all(target_os = "windows", target_arch = "x86_64"),
+        all(target_os = "windows", target_arch = "aarch64")
+    )))]
+    {
+        &["ffmpeg"]
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BridgeChannelAssignment {
+    pub device_id: String,
+    pub left_channel: u16,
+    pub right_channel: u16,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartBridgeInputRequest {
+    pub stream_id: String,
+    pub assignment: BridgeChannelAssignment,
+    pub rtp_ip: String,
+    pub rtp_port: u16,
+    pub payload_type: u8,
+    pub ssrc: u32,
+    #[serde(default)]
+    pub audio_level: PortAudioLevel,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReserveBridgeOutputRequest {
+    pub stream_id: String,
+    pub assignment: BridgeChannelAssignment,
+    #[serde(default)]
+    pub audio_level: PortAudioLevel,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnsureBridgeOutputEndpointRequest {
+    pub endpoint_id: String,
+    pub assignment: BridgeChannelAssignment,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivateBridgeOutputRequest {
+    pub stream_id: String,
+    pub payload_type: u8,
+    pub clock_rate: u32,
+    pub channels: u16,
+    pub fmtp: Option<String>,
+    pub handshake_ip: Option<String>,
+    pub handshake_port: Option<u16>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetBridgeOutputLevelRequest {
+    pub stream_id: String,
+    pub volume: f32,
+    pub muted: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetBridgePortAudioLevelRequest {
+    pub port_id: String,
+    pub direction: String,
+    pub level: PortAudioLevel,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReservedBridgeOutput {
+    pub stream_id: String,
+    pub port: u16,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BridgeMediaStatus {
+    pub input_stream_ids: Vec<String>,
+    pub output_stream_ids: Vec<String>,
+    pub pending_output_stream_ids: Vec<String>,
+    pub input_stream_errors: Vec<BridgeMediaStreamError>,
+    pub output_stream_errors: Vec<BridgeMediaStreamError>,
+    pub input_stream_stats: Vec<BridgeMediaInputStats>,
+    pub output_stream_stats: Vec<BridgeMediaOutputStats>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BridgeMediaStreamError {
+    pub stream_id: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BridgeMediaInputStats {
+    pub stream_id: String,
+    pub rms_db: f32,
+    pub peak_db: f32,
+    pub clipped_samples: u64,
+    pub captured_frames: u64,
+    pub xrun_count: u64,
+    pub dropped_chunks: u64,
+    pub dropped_frames: u64,
+    pub ffmpeg_warning_count: u64,
+    pub last_ffmpeg_warning: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BridgeMediaOutputStats {
+    pub stream_id: String,
+    pub rms_db: f32,
+    pub peak_db: f32,
+    pub clipped_samples: u64,
+    pub decoded_frames: u64,
+    pub decoded_bytes: u64,
+    pub ffmpeg_warning_count: u64,
+    pub last_ffmpeg_warning: Option<String>,
+}
+
+#[derive(Default)]
+pub struct BridgeMediaManager {
+    inner: Mutex<BridgeMediaState>,
+}
+
+impl Drop for BridgeMediaManager {
+    fn drop(&mut self) {
+        if let Ok(state) = self.inner.get_mut() {
+            for (_, runtime) in std::mem::take(&mut state.inputs) {
+                runtime.stop();
+            }
+            for (_, runtime) in std::mem::take(&mut state.outputs) {
+                runtime.stop();
+            }
+            for (_, runtime) in std::mem::take(&mut state.mixers) {
+                runtime.stop();
+            }
+            state.pending_outputs.clear();
+        }
+    }
+}
+
+#[derive(Default)]
+struct BridgeMediaState {
+    inputs: HashMap<String, BridgeInputRuntime>,
+    outputs: HashMap<String, BridgeOutputRuntime>,
+    mixers: HashMap<OutputMixerKey, BridgeOutputMixerRuntime>,
+    output_endpoints: HashMap<String, OutputMixerKey>,
+    pending_outputs: HashMap<String, PendingBridgeOutput>,
+}
+
+struct PendingBridgeOutput {
+    request: ReserveBridgeOutputRequest,
+    port: u16,
+    socket: UdpSocket,
+}
+
+struct BridgeInputRuntime {
+    stream: BridgeInputStreamRuntime,
+    child: Arc<Mutex<Child>>,
+    last_error: Arc<Mutex<Option<String>>>,
+    audio_gain: Arc<AudioGain>,
+    captured_frames: Arc<AtomicU64>,
+    xrun_count: Arc<AtomicU64>,
+    dropped_chunks: Arc<AtomicU64>,
+    dropped_frames: Arc<AtomicU64>,
+    ffmpeg_warning_count: Arc<AtomicU64>,
+    last_ffmpeg_warning: Arc<Mutex<Option<String>>>,
+    sender: Option<SyncSender<Vec<u8>>>,
+    writer: Option<JoinHandle<()>>,
+    stderr_reader: Option<JoinHandle<()>>,
+}
+
+struct BridgeOutputRuntime {
+    mixer_key: OutputMixerKey,
+    audio_gain: Arc<AudioGain>,
+    child: Arc<Mutex<Child>>,
+    last_error: Arc<Mutex<Option<String>>>,
+    decoded_frames: Arc<AtomicU64>,
+    decoded_bytes: Arc<AtomicU64>,
+    ffmpeg_warning_count: Arc<AtomicU64>,
+    last_ffmpeg_warning: Arc<Mutex<Option<String>>>,
+    reader: Option<JoinHandle<()>>,
+    stderr_reader: Option<JoinHandle<()>>,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct OutputMixerKey {
+    device_id: String,
+    left_channel: u16,
+    right_channel: u16,
+}
+
+struct BridgeOutputMixerRuntime {
+    stream: BridgeOutputStreamRuntime,
+    sample_rate: SampleRate,
+    sources: Arc<Mutex<HashMap<String, BridgeOutputMixerSource>>>,
+    last_error: Arc<Mutex<Option<String>>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct BridgeOutputMixerSource {
+    pub(crate) queue: Arc<Mutex<VecDeque<StereoFrame>>>,
+    pub(crate) level: Arc<Mutex<BridgeOutputLevel>>,
+    pub(crate) left_channel: u16,
+    pub(crate) right_channel: u16,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct BridgeOutputLevel {
+    pub(crate) volume: f32,
+    pub(crate) muted: bool,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct StereoFrame {
+    pub(crate) left: f32,
+    pub(crate) right: f32,
+}
+
+#[allow(dead_code)]
+enum BridgeInputStreamRuntime {
+    Native(Stream),
+    Network(network_audio::NetworkAudioInputRuntime),
+}
+
+#[allow(dead_code)]
+enum BridgeOutputStreamRuntime {
+    Native(Stream),
+    Network(network_audio::NetworkAudioOutputRuntime),
+}
+
+impl BridgeMediaManager {
+    pub fn start_input(
+        &self,
+        request: StartBridgeInputRequest,
+    ) -> Result<BridgeMediaStatus, String> {
+        validate_stream_id(&request.stream_id)?;
+        validate_assignment(&request.assignment, "input")?;
+        request.audio_level.validate()?;
+        if request.rtp_ip.trim().is_empty() || request.rtp_port == 0 {
+            return Err("RTP destination is required".to_string());
+        }
+
+        let runtime = BridgeInputRuntime::start(&request)?;
+        let mut state = self.lock()?;
+        if let Some(previous) = state.inputs.remove(&request.stream_id) {
+            previous.stop();
+        }
+        state.inputs.insert(request.stream_id, runtime);
+        Ok(status_from(&state))
+    }
+
+    pub fn stop_input(&self, stream_id: String) -> Result<BridgeMediaStatus, String> {
+        let mut state = self.lock()?;
+        if let Some(runtime) = state.inputs.remove(stream_id.trim()) {
+            runtime.stop();
+        }
+        Ok(status_from(&state))
+    }
+
+    pub fn reserve_output(
+        &self,
+        request: ReserveBridgeOutputRequest,
+    ) -> Result<ReservedBridgeOutput, String> {
+        validate_stream_id(&request.stream_id)?;
+        validate_assignment(&request.assignment, "output")?;
+        request.audio_level.validate()?;
+        let socket = UdpSocket::bind("0.0.0.0:0")
+            .map_err(|err| format!("failed to reserve RTP receive port: {err}"))?;
+        let port = socket
+            .local_addr()
+            .map_err(|err| format!("failed to read reserved RTP port: {err}"))?
+            .port();
+        let mut state = self.lock()?;
+        Self::stop_output_locked(&mut state, &request.stream_id);
+        state.pending_outputs.insert(
+            request.stream_id.clone(),
+            PendingBridgeOutput {
+                request: request.clone(),
+                port,
+                socket,
+            },
+        );
+        Ok(ReservedBridgeOutput {
+            stream_id: request.stream_id,
+            port,
+        })
+    }
+
+    pub fn ensure_output_endpoint(
+        &self,
+        request: EnsureBridgeOutputEndpointRequest,
+    ) -> Result<BridgeMediaStatus, String> {
+        validate_stream_id(&request.endpoint_id)?;
+        validate_assignment(&request.assignment, "output")?;
+        let mixer_key = OutputMixerKey::from_assignment(&request.assignment);
+        let mut state = self.lock()?;
+
+        if let Some(previous_key) = state.output_endpoints.remove(request.endpoint_id.trim()) {
+            Self::remove_mixer_if_unused_locked(&mut state, &previous_key);
+        }
+        if !state.mixers.contains_key(&mixer_key) {
+            let mixer = BridgeOutputMixerRuntime::start(&request.assignment)?;
+            state.mixers.insert(mixer_key.clone(), mixer);
+        }
+        state
+            .output_endpoints
+            .insert(request.endpoint_id.trim().to_string(), mixer_key);
+        Ok(status_from(&state))
+    }
+
+    pub fn release_output_endpoint(
+        &self,
+        endpoint_id: String,
+    ) -> Result<BridgeMediaStatus, String> {
+        let mut state = self.lock()?;
+        if let Some(mixer_key) = state.output_endpoints.remove(endpoint_id.trim()) {
+            Self::remove_mixer_if_unused_locked(&mut state, &mixer_key);
+        }
+        Ok(status_from(&state))
+    }
+
+    pub fn activate_output(
+        &self,
+        request: ActivateBridgeOutputRequest,
+    ) -> Result<BridgeMediaStatus, String> {
+        let mut state = self.lock()?;
+        let stream_id = request.stream_id.trim().to_string();
+        let pending = state
+            .pending_outputs
+            .remove(&stream_id)
+            .ok_or_else(|| "RTP output port was not reserved".to_string())?;
+        Self::stop_output_locked(&mut state, &stream_id);
+
+        let mixer_key = OutputMixerKey::from_assignment(&pending.request.assignment);
+        if !state.mixers.contains_key(&mixer_key) {
+            let mixer = BridgeOutputMixerRuntime::start(&pending.request.assignment)?;
+            state.mixers.insert(mixer_key.clone(), mixer);
+        }
+        let mixer = state
+            .mixers
+            .get(&mixer_key)
+            .ok_or_else(|| "bridge output mixer was not created".to_string())?;
+        let output_sample_rate = mixer.sample_rate;
+        let (source_queue, source_level) = mixer.add_source(stream_id.clone(), &pending.request.assignment)?;
+        let runtime = match BridgeOutputRuntime::start(
+            pending,
+            &request,
+            mixer_key.clone(),
+            source_queue,
+            source_level,
+            output_sample_rate,
+        ) {
+            Ok(runtime) => runtime,
+            Err(err) => {
+                Self::remove_mixer_source_locked(&mut state, &mixer_key, &stream_id);
+                return Err(err);
+            }
+        };
+        state.outputs.insert(stream_id, runtime);
+        Ok(status_from(&state))
+    }
+
+    pub fn stop_output(&self, stream_id: String) -> Result<BridgeMediaStatus, String> {
+        let mut state = self.lock()?;
+        state.pending_outputs.remove(stream_id.trim());
+        Self::stop_output_locked(&mut state, stream_id.trim());
+        Ok(status_from(&state))
+    }
+
+    pub fn set_output_level(
+        &self,
+        request: SetBridgeOutputLevelRequest,
+    ) -> Result<BridgeMediaStatus, String> {
+        validate_stream_id(&request.stream_id)?;
+        let mut state = self.lock()?;
+        let stream_id = request.stream_id.trim();
+        let mixer_key = state
+            .outputs
+            .get(stream_id)
+            .map(|runtime| runtime.mixer_key.clone())
+            .ok_or_else(|| "Bridge output stream is not active".to_string())?;
+        let mixer = state
+            .mixers
+            .get_mut(&mixer_key)
+            .ok_or_else(|| "Bridge output mixer is not active".to_string())?;
+        mixer.set_source_level(stream_id, request.volume, request.muted)?;
+        Ok(status_from(&state))
+    }
+
+    pub fn set_port_audio_level(&self, request: SetBridgePortAudioLevelRequest) -> Result<BridgeMediaStatus, String> {
+        validate_stream_id(&request.port_id)?;
+        if !["input", "output"].contains(&request.direction.as_str()) { return Err("Invalid audio direction".to_string()); }
+        let level = request.level.validate()?;
+        let mut state = self.lock()?;
+        if request.direction == "input" {
+            if let Some(runtime) = state.inputs.get(&format!("{}:input", request.port_id)) {
+                runtime.audio_gain.set(level);
+            }
+        } else {
+            let prefix = format!("{}:consumer:", request.port_id);
+            for (id, runtime) in &state.outputs {
+                if id.starts_with(&prefix) { runtime.audio_gain.set(level); }
+            }
+            for (id, pending) in &mut state.pending_outputs {
+                if id.starts_with(&prefix) { pending.request.audio_level = level; }
+            }
+        }
+        Ok(status_from(&state))
+    }
+
+    pub fn stop_all(&self) -> Result<BridgeMediaStatus, String> {
+        let mut state = self.lock()?;
+        let inputs = std::mem::take(&mut state.inputs);
+        let outputs = std::mem::take(&mut state.outputs);
+        let mixers = std::mem::take(&mut state.mixers);
+        state.output_endpoints.clear();
+        state.pending_outputs.clear();
+        for (_, runtime) in inputs {
+            runtime.stop();
+        }
+        for (_, runtime) in outputs {
+            runtime.stop();
+        }
+        for (_, runtime) in mixers {
+            runtime.stop();
+        }
+        Ok(status_from(&state))
+    }
+
+    pub fn status(&self) -> Result<BridgeMediaStatus, String> {
+        let state = self.lock()?;
+        Ok(status_from(&state))
+    }
+
+    fn lock(&self) -> Result<std::sync::MutexGuard<'_, BridgeMediaState>, String> {
+        self.inner
+            .lock()
+            .map_err(|_| "bridge media runtime lock poisoned".to_string())
+    }
+
+    fn stop_output_locked(state: &mut BridgeMediaState, stream_id: &str) {
+        let stream_id = stream_id.trim();
+        if let Some(runtime) = state.outputs.remove(stream_id) {
+            let mixer_key = runtime.mixer_key.clone();
+            runtime.stop();
+            Self::remove_mixer_source_locked(state, &mixer_key, stream_id);
+        }
+    }
+
+    fn remove_mixer_source_locked(
+        state: &mut BridgeMediaState,
+        mixer_key: &OutputMixerKey,
+        stream_id: &str,
+    ) {
+        let should_remove = if let Some(mixer) = state.mixers.get(mixer_key) {
+            mixer.remove_source(stream_id);
+            mixer.is_empty()
+        } else {
+            false
+        };
+        if should_remove {
+            Self::remove_mixer_if_unused_locked(state, mixer_key);
+        }
+    }
+
+    fn remove_mixer_if_unused_locked(state: &mut BridgeMediaState, mixer_key: &OutputMixerKey) {
+        let has_endpoint = state
+            .output_endpoints
+            .values()
+            .any(|endpoint_key| endpoint_key == mixer_key);
+        let has_sources = state
+            .mixers
+            .get(mixer_key)
+            .is_some_and(|mixer| !mixer.is_empty());
+        if !has_endpoint && !has_sources {
+            if let Some(mixer) = state.mixers.remove(mixer_key) {
+                mixer.stop();
+            }
+        }
+    }
+}
+
+impl BridgeInputRuntime {
+    fn start(request: &StartBridgeInputRequest) -> Result<Self, String> {
+        let destination = format!(
+            "rtp://{}:{}?pkt_size=1200",
+            request.rtp_ip.trim(),
+            request.rtp_port
+        );
+        let (sender, receiver) = sync_channel::<Vec<u8>>(8);
+        let callback_sender = sender.clone();
+        let last_error = Arc::new(Mutex::new(None));
+        let stream_error = Arc::clone(&last_error);
+        let callback_level = Arc::new(AtomicI32::new(-120_000));
+        let audio_gain = Arc::new(AudioGain::new(request.audio_level));
+        let captured_frames = Arc::new(AtomicU64::new(0));
+        let callback_captured_frames = Arc::clone(&captured_frames);
+        let xrun_count = Arc::new(AtomicU64::new(0));
+        let callback_xrun_count = Arc::clone(&xrun_count);
+        let dropped_chunks = Arc::new(AtomicU64::new(0));
+        let callback_dropped_chunks = Arc::clone(&dropped_chunks);
+        let dropped_frames = Arc::new(AtomicU64::new(0));
+        let callback_dropped_frames = Arc::clone(&dropped_frames);
+        let (stream, input_sample_rate) =
+            if network_audio::is_input_device(&request.assignment.device_id) {
+                let runtime = network_audio::start_input(network_audio::InputStartRequest {
+                    device_id: request.assignment.device_id.clone(),
+                    left_channel: request.assignment.left_channel,
+                    right_channel: request.assignment.right_channel,
+                    sender: callback_sender,
+                    last_error: Arc::clone(&last_error),
+                    level_milli_db: callback_level,
+                    captured_frames: callback_captured_frames,
+                    dropped_chunks: callback_dropped_chunks,
+                    dropped_frames: callback_dropped_frames,
+                })?;
+                (
+                    BridgeInputStreamRuntime::Network(runtime),
+                    "48000".to_string(),
+                )
+            } else {
+                let device = audio::find_audio_device("input", &request.assignment.device_id)?;
+                let config = choose_f32_config(
+                    &device,
+                    "input",
+                    request
+                        .assignment
+                        .left_channel
+                        .max(request.assignment.right_channel),
+                )?;
+                let input_sample_rate = config.sample_rate.to_string();
+                let channels = usize::from(config.channels);
+                let left_index = usize::from(request.assignment.left_channel - 1);
+                let right_index = usize::from(request.assignment.right_channel - 1);
+                let native_stream = device
+                    .build_input_stream::<f32, _, _>(
+                        config,
+                        move |data, _| {
+                            if channels == 0 || left_index >= channels || right_index >= channels {
+                                return;
+                            }
+                            let frames = data.len() / channels;
+                            let mut bytes =
+                                Vec::with_capacity(frames * 2 * std::mem::size_of::<f32>());
+                            let mut sum_squares = 0.0_f64;
+                            let mut sample_count = 0_usize;
+                            for frame in data.chunks_exact(channels) {
+                                let left = frame[left_index];
+                                let right = frame[right_index];
+                                sum_squares += f64::from(left * left);
+                                sum_squares += f64::from(right * right);
+                                sample_count += 2;
+                                bytes.extend_from_slice(&left.to_le_bytes());
+                                bytes.extend_from_slice(&right.to_le_bytes());
+                            }
+                            callback_level
+                                .store(rms_milli_db(sum_squares, sample_count), Ordering::Relaxed);
+                            callback_captured_frames.fetch_add(frames as u64, Ordering::Relaxed);
+                            if let Err(TrySendError::Full(_) | TrySendError::Disconnected(_)) =
+                                callback_sender.try_send(bytes)
+                            {
+                                callback_dropped_chunks.fetch_add(1, Ordering::Relaxed);
+                                callback_dropped_frames.fetch_add(frames as u64, Ordering::Relaxed);
+                            }
+                        },
+                        move |err| {
+                            let message = format!("bridge input stream error: {err}");
+                            if is_recoverable_stream_error(err.kind()) {
+                                if matches!(err.kind(), ErrorKind::Xrun) {
+                                    callback_xrun_count.fetch_add(1, Ordering::Relaxed);
+                                }
+                                eprintln!("[bridge-media][input][recoverable] {message}");
+                                return;
+                            }
+                            eprintln!("[bridge-media][input][fatal] {message}");
+                            if let Ok(mut last_error) = stream_error.lock() {
+                                *last_error = Some(message);
+                            }
+                        },
+                        None,
+                    )
+                    .map_err(|err| format!("failed to build bridge input stream: {err}"))?;
+                native_stream
+                    .play()
+                    .map_err(|err| format!("failed to start bridge input stream: {err}"))?;
+                (
+                    BridgeInputStreamRuntime::Native(native_stream),
+                    input_sample_rate,
+                )
+            };
+
+        let mut child = ffmpeg_command()
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "warning",
+                "-f",
+                "f32le",
+                "-ar",
+                &input_sample_rate,
+                "-ac",
+                "2",
+                "-i",
+                "pipe:0",
+                "-ar",
+                "48000",
+                "-c:a",
+                "libopus",
+                "-application",
+                "voip",
+                "-frame_duration",
+                "20",
+                "-b:a",
+                "64000",
+                "-payload_type",
+                &request.payload_type.to_string(),
+                "-ssrc",
+                &request.ssrc.to_string(),
+                "-f",
+                "rtp",
+                &destination,
+            ])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|err| format!("failed to start ffmpeg Opus encoder: {err}"))?;
+        let mut stdin = match child.stdin.take() {
+            Some(stdin) => stdin,
+            None => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("ffmpeg encoder stdin is unavailable".to_string());
+            }
+        };
+        let stderr = child.stderr.take();
+        let ffmpeg_warning_count = Arc::new(AtomicU64::new(0));
+        let last_ffmpeg_warning = Arc::new(Mutex::new(None));
+        let stderr_reader = stderr.map(|stderr| {
+            spawn_ffmpeg_stderr_reader(
+                stderr,
+                request.stream_id.clone(),
+                "input",
+                Arc::clone(&ffmpeg_warning_count),
+                Arc::clone(&last_ffmpeg_warning),
+            )
+        });
+        let child = Arc::new(Mutex::new(child));
+        let writer_gain = Arc::clone(&audio_gain);
+        let mut previous_gain = writer_gain.linear();
+        let writer = thread::spawn(move || {
+            while let Ok(mut bytes) = receiver.recv() {
+                writer_gain.process(&mut bytes, &mut previous_gain, 1.0, true);
+                if stdin.write_all(&bytes).is_err() {
+                    break;
+                }
+            }
+        });
+
+        Ok(Self {
+            stream,
+            child,
+            last_error,
+            audio_gain,
+            captured_frames,
+            xrun_count,
+            dropped_chunks,
+            dropped_frames,
+            ffmpeg_warning_count,
+            last_ffmpeg_warning,
+            sender: Some(sender),
+            writer: Some(writer),
+            stderr_reader,
+        })
+    }
+
+    fn stop(mut self) {
+        drop(self.stream);
+        self.sender.take();
+        if let Ok(mut child) = self.child.lock() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        if let Some(writer) = self.writer.take() {
+            let _ = writer.join();
+        }
+        if let Some(stderr_reader) = self.stderr_reader.take() {
+            let _ = stderr_reader.join();
+        }
+    }
+}
+
+impl OutputMixerKey {
+    fn from_assignment(assignment: &BridgeChannelAssignment) -> Self {
+        let (left_channel, right_channel) =
+            if network_audio::is_output_device(&assignment.device_id) {
+                // One network sender owns all channel routes for a named output slot.
+                // Individual stream assignments are retained on the mixer sources.
+                (0, 0)
+            } else {
+                (assignment.left_channel, assignment.right_channel)
+            };
+        Self {
+            device_id: assignment.device_id.trim().to_string(),
+            left_channel,
+            right_channel,
+        }
+    }
+}
+
+impl BridgeOutputMixerRuntime {
+    fn start(assignment: &BridgeChannelAssignment) -> Result<Self, String> {
+        let sources = Arc::new(Mutex::new(HashMap::<String, BridgeOutputMixerSource>::new()));
+        let output_sources = Arc::clone(&sources);
+        let last_error = Arc::new(Mutex::new(None));
+        let stream_error = Arc::clone(&last_error);
+        let (stream, sample_rate) = if network_audio::is_output_device(&assignment.device_id) {
+            let runtime = network_audio::start_output(
+                assignment.device_id.clone(),
+                Arc::clone(&sources),
+                Arc::clone(&last_error),
+            )?;
+            (BridgeOutputStreamRuntime::Network(runtime), SAMPLE_RATE_48K)
+        } else {
+            let device = audio::find_audio_device("output", &assignment.device_id)?;
+            let config = choose_f32_config(
+                &device,
+                "output",
+                assignment.left_channel.max(assignment.right_channel),
+            )?;
+            let sample_rate = config.sample_rate;
+            let channels = usize::from(config.channels);
+            let left_index = usize::from(assignment.left_channel - 1);
+            let right_index = usize::from(assignment.right_channel - 1);
+            let native_stream = device
+                .build_output_stream::<f32, _, _>(
+                    config,
+                    move |data, _| {
+                        data.fill(0.0);
+                        if channels == 0 || left_index >= channels || right_index >= channels {
+                            return;
+                        }
+                        let source_queues = output_sources
+                            .lock()
+                            .map(|sources| sources.values().cloned().collect::<Vec<_>>())
+                            .unwrap_or_default();
+                        if source_queues.is_empty() {
+                            return;
+                        }
+                        for frame in data.chunks_exact_mut(channels) {
+                            let mut left = 0.0_f32;
+                            let mut right = 0.0_f32;
+                            for source in &source_queues {
+                                let level = source.level.lock().map(|level| *level).unwrap_or(
+                                    BridgeOutputLevel {
+                                        volume: 1.0,
+                                        muted: false,
+                                    },
+                                );
+                                if level.muted || level.volume <= 0.0 {
+                                    continue;
+                                }
+                                if let Ok(mut queue) = source.queue.lock() {
+                                    if let Some(stereo) = queue.pop_front() {
+                                        left += stereo.left * level.volume;
+                                        right += stereo.right * level.volume;
+                                    }
+                                }
+                            }
+                            if left_index == right_index {
+                                frame[left_index] = ((left + right) * 0.5).clamp(-1.0, 1.0);
+                            } else {
+                                frame[left_index] = left.clamp(-1.0, 1.0);
+                                frame[right_index] = right.clamp(-1.0, 1.0);
+                            }
+                        }
+                    },
+                    move |err| {
+                        let message = format!("bridge output stream error: {err}");
+                        if is_recoverable_stream_error(err.kind()) {
+                            eprintln!("[bridge-media][output][recoverable] {message}");
+                            return;
+                        }
+                        eprintln!("[bridge-media][output][fatal] {message}");
+                        if let Ok(mut last_error) = stream_error.lock() {
+                            *last_error = Some(message);
+                        }
+                    },
+                    None,
+                )
+                .map_err(|err| format!("failed to build bridge output stream: {err}"))?;
+            native_stream
+                .play()
+                .map_err(|err| format!("failed to start bridge output stream: {err}"))?;
+            (
+                BridgeOutputStreamRuntime::Native(native_stream),
+                sample_rate,
+            )
+        };
+        Ok(Self {
+            stream,
+            sample_rate,
+            sources,
+            last_error,
+        })
+    }
+
+    fn add_source(
+        &self,
+        stream_id: String,
+        assignment: &BridgeChannelAssignment,
+    ) -> Result<(Arc<Mutex<VecDeque<StereoFrame>>>, Arc<Mutex<BridgeOutputLevel>>), String> {
+        let queue = Arc::new(Mutex::new(VecDeque::<StereoFrame>::new()));
+        let source = BridgeOutputMixerSource {
+            queue: Arc::clone(&queue),
+            level: Arc::new(Mutex::new(BridgeOutputLevel {
+                volume: 1.0,
+                muted: false,
+            })),
+            left_channel: assignment.left_channel,
+            right_channel: assignment.right_channel,
+        };
+        let mut sources = self
+            .sources
+            .lock()
+            .map_err(|_| "bridge output mixer lock poisoned".to_string())?;
+        let level = Arc::clone(&source.level);
+        sources.insert(stream_id, source);
+        Ok((queue, level))
+    }
+
+    fn set_source_level(
+        &mut self,
+        stream_id: &str,
+        volume: f32,
+        muted: bool,
+    ) -> Result<(), String> {
+        let sources = self
+            .sources
+            .lock()
+            .map_err(|_| "bridge output mixer lock poisoned".to_string())?;
+        let source = sources
+            .get(stream_id.trim())
+            .ok_or_else(|| "Bridge output mixer source is not active".to_string())?;
+        let mut level = source
+            .level
+            .lock()
+            .map_err(|_| "bridge output source level lock poisoned".to_string())?;
+        level.volume = volume.clamp(0.0, 1.0);
+        level.muted = muted;
+        Ok(())
+    }
+
+    fn remove_source(&self, stream_id: &str) {
+        if let Ok(mut sources) = self.sources.lock() {
+            sources.remove(stream_id.trim());
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.sources
+            .lock()
+            .map(|sources| sources.is_empty())
+            .unwrap_or(true)
+    }
+
+    fn stop(self) {
+        drop(self.stream);
+    }
+}
+
+impl BridgeOutputRuntime {
+    fn start(
+        pending: PendingBridgeOutput,
+        request: &ActivateBridgeOutputRequest,
+        mixer_key: OutputMixerKey,
+        queue: Arc<Mutex<VecDeque<StereoFrame>>>,
+        source_level: Arc<Mutex<BridgeOutputLevel>>,
+        output_sample_rate: SampleRate,
+    ) -> Result<Self, String> {
+        let PendingBridgeOutput {
+            request: pending_request,
+            port,
+            socket,
+        } = pending;
+        let audio_gain = Arc::new(AudioGain::new(pending_request.audio_level));
+        match (
+            request.handshake_ip.as_deref().map(str::trim),
+            request.handshake_port,
+        ) {
+            (Some(host), Some(handshake_port)) if !host.is_empty() && handshake_port > 0 => {
+                send_output_handshake(&socket, host, handshake_port)?;
+            }
+            (None, None) => {}
+            _ => return Err("bridge RTP handshake destination is incomplete".to_string()),
+        }
+        drop(socket);
+
+        let output_sample_rate = output_sample_rate.to_string();
+        let fmtp_line = request
+            .fmtp
+            .as_deref()
+            .filter(|value| !value.trim().is_empty())
+            .map(|value| format!("a=fmtp:{} {}\n", request.payload_type, value.trim()))
+            .unwrap_or_default();
+        let sdp = format!(
+            "v=0\n\
+             o=- 0 0 IN IP4 127.0.0.1\n\
+             s=LinkTalk Bridge\n\
+             c=IN IP4 0.0.0.0\n\
+             t=0 0\n\
+             m=audio {} RTP/AVP {}\n\
+             a=rtpmap:{} opus/{}/{}\n\
+             {}\
+             a=rtcp-mux\n\
+             a=recvonly\n",
+            port,
+            request.payload_type,
+            request.payload_type,
+            request.clock_rate,
+            request.channels,
+            fmtp_line,
+        );
+        let mut child = ffmpeg_command()
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "warning",
+                "-protocol_whitelist",
+                "pipe,udp,rtp",
+                "-fflags",
+                "nobuffer",
+                "-flags",
+                "low_delay",
+                "-analyzeduration",
+                "0",
+                "-probesize",
+                "32",
+                "-f",
+                "sdp",
+                // FFmpeg's SDP demuxer otherwise stops after ten seconds
+                // without RTP. Talk producers stay alive between PTT uses,
+                // so the bridge decoder must remain ready across idle gaps.
+                "-listen_timeout",
+                "-1",
+                "-i",
+                "pipe:0",
+                "-ac",
+                "2",
+                "-ar",
+                &output_sample_rate,
+                "-c:a",
+                "pcm_f32le",
+                "-f",
+                "f32le",
+                "pipe:1",
+            ])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|err| format!("failed to start ffmpeg Opus decoder: {err}"))?;
+        let mut stdin = match child.stdin.take() {
+            Some(stdin) => stdin,
+            None => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("ffmpeg decoder stdin is unavailable".to_string());
+            }
+        };
+        if let Err(err) = stdin.write_all(sdp.as_bytes()) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(format!("failed to configure ffmpeg decoder: {err}"));
+        }
+        drop(stdin);
+        thread::sleep(Duration::from_millis(DECODER_STARTUP_GRACE_MS));
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|err| format!("failed to inspect ffmpeg decoder: {err}"))?
+        {
+            return Err(format!(
+                "ffmpeg Opus decoder exited during startup: {status}"
+            ));
+        }
+        let mut stdout = match child.stdout.take() {
+            Some(stdout) => stdout,
+            None => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("ffmpeg decoder stdout is unavailable".to_string());
+            }
+        };
+        let stderr = child.stderr.take();
+        let ffmpeg_warning_count = Arc::new(AtomicU64::new(0));
+        let last_ffmpeg_warning = Arc::new(Mutex::new(None));
+        let stderr_reader = stderr.map(|stderr| {
+            spawn_ffmpeg_stderr_reader(
+                stderr,
+                request.stream_id.clone(),
+                "output",
+                Arc::clone(&ffmpeg_warning_count),
+                Arc::clone(&last_ffmpeg_warning),
+            )
+        });
+        let child = Arc::new(Mutex::new(child));
+        let reader_queue = Arc::clone(&queue);
+        let last_error = Arc::new(Mutex::new(None));
+        let reader_error = Arc::clone(&last_error);
+        let decoded_frames = Arc::new(AtomicU64::new(0));
+        let decoded_bytes = Arc::new(AtomicU64::new(0));
+        let reader_decoded_frames = Arc::clone(&decoded_frames);
+        let reader_decoded_bytes = Arc::clone(&decoded_bytes);
+        let reader_gain = Arc::clone(&audio_gain);
+        let mut previous_gain = reader_gain.linear();
+        let reader = thread::spawn(move || {
+            let mut read_buffer = [0_u8; 8192];
+            let mut pending_bytes = Vec::<u8>::new();
+            loop {
+                let read = match stdout.read(&mut read_buffer) {
+                    Ok(0) => break,
+                    Err(err) => {
+                        if let Ok(mut last_error) = reader_error.lock() {
+                            *last_error = Some(format!("ffmpeg Opus decoder read failed: {err}"));
+                        }
+                        break;
+                    }
+                    Ok(read) => read,
+                };
+                pending_bytes.extend_from_slice(&read_buffer[..read]);
+                let complete_bytes = pending_bytes.len() - (pending_bytes.len() % 8);
+                if complete_bytes == 0 {
+                    continue;
+                }
+                let meter_scale = source_level.lock().map(|level| if level.muted { 0.0 } else { level.volume }).unwrap_or(1.0);
+                reader_gain.process(&mut pending_bytes[..complete_bytes], &mut previous_gain, meter_scale, false);
+                reader_decoded_frames.fetch_add((complete_bytes / 8) as u64, Ordering::Relaxed);
+                reader_decoded_bytes.fetch_add(complete_bytes as u64, Ordering::Relaxed);
+                if let Ok(mut queue) = reader_queue.lock() {
+                    for frame in pending_bytes[..complete_bytes].chunks_exact(8) {
+                        queue.push_back(StereoFrame {
+                            left: f32::from_le_bytes(frame[0..4].try_into().unwrap_or([0; 4])),
+                            right: f32::from_le_bytes(frame[4..8].try_into().unwrap_or([0; 4])),
+                        });
+                    }
+                    while queue.len() > OUTPUT_QUEUE_LIMIT_FRAMES {
+                        queue.pop_front();
+                    }
+                }
+                pending_bytes.drain(..complete_bytes);
+            }
+        });
+        Ok(Self {
+            mixer_key,
+            audio_gain,
+            child,
+            last_error,
+            decoded_frames,
+            decoded_bytes,
+            ffmpeg_warning_count,
+            last_ffmpeg_warning,
+            reader: Some(reader),
+            stderr_reader,
+        })
+    }
+
+    fn stop(mut self) {
+        if let Ok(mut child) = self.child.lock() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        if let Some(reader) = self.reader.take() {
+            let _ = reader.join();
+        }
+        if let Some(stderr_reader) = self.stderr_reader.take() {
+            let _ = stderr_reader.join();
+        }
+    }
+}
+
+fn send_output_handshake(socket: &UdpSocket, host: &str, port: u16) -> Result<(), String> {
+    if host.is_empty() || port == 0 {
+        return Err("bridge RTP handshake destination is required".to_string());
+    }
+    let destination = (host, port)
+        .to_socket_addrs()
+        .map_err(|err| format!("failed to resolve bridge RTP handshake destination: {err}"))?
+        .find(|address| address.is_ipv4())
+        .ok_or_else(|| "bridge RTP handshake destination has no IPv4 address".to_string())?;
+    // The server-side PlainTransport uses comedia for the return path. Sending
+    // RTCP from the reserved receive port lets mediasoup learn the NAT-mapped
+    // tuple before FFmpeg takes over the same local port.
+    let packet = build_rtcp_receiver_report(OUTPUT_HANDSHAKE_SSRC);
+
+    for attempt in 0..OUTPUT_HANDSHAKE_ATTEMPTS {
+        socket
+            .send_to(&packet, destination)
+            .map_err(|err| format!("failed to send bridge RTP handshake: {err}"))?;
+        if attempt + 1 < OUTPUT_HANDSHAKE_ATTEMPTS {
+            thread::sleep(Duration::from_millis(OUTPUT_HANDSHAKE_INTERVAL_MS));
+        }
+    }
+    Ok(())
+}
+
+fn build_rtcp_receiver_report(ssrc: u32) -> [u8; 8] {
+    let ssrc = ssrc.to_be_bytes();
+    [0x80, 201, 0, 1, ssrc[0], ssrc[1], ssrc[2], ssrc[3]]
+}
+
+fn choose_f32_config(
+    device: &cpal::Device,
+    direction: &str,
+    min_channels: u16,
+) -> Result<StreamConfig, String> {
+    let ranges: Vec<SupportedStreamConfigRange> = match direction {
+        "input" => device
+            .supported_input_configs()
+            .map_err(|err| format!("failed to query input stream configs: {err}"))?
+            .collect(),
+        "output" => device
+            .supported_output_configs()
+            .map_err(|err| format!("failed to query output stream configs: {err}"))?
+            .collect(),
+        _ => return Err(format!("unknown stream direction: {direction}")),
+    };
+    let selected = ranges
+        .into_iter()
+        .filter(|range| range.sample_format() == SampleFormat::F32)
+        .filter(|range| range.channels() >= min_channels)
+        .min_by_key(|range| {
+            (
+                sample_rate_distance_from_48k(select_sample_rate(range)),
+                range.channels(),
+            )
+        })
+        .ok_or_else(|| {
+            format!("no F32 {direction} config with at least {min_channels} channels")
+        })?;
+    Ok(selected
+        .with_sample_rate(select_sample_rate(&selected))
+        .config())
+}
+
+fn select_sample_rate(range: &SupportedStreamConfigRange) -> SampleRate {
+    if range.contains_rate(SAMPLE_RATE_48K) {
+        return SAMPLE_RATE_48K;
+    }
+
+    let min = range.min_sample_rate();
+    let max = range.max_sample_rate();
+
+    if max < SAMPLE_RATE_48K {
+        max
+    } else {
+        min
+    }
+}
+
+fn sample_rate_distance_from_48k(sample_rate: SampleRate) -> u32 {
+    sample_rate.abs_diff(SAMPLE_RATE_48K)
+}
+
+fn validate_stream_id(stream_id: &str) -> Result<(), String> {
+    if stream_id.trim().is_empty() {
+        return Err("stream id is required".to_string());
+    }
+    Ok(())
+}
+
+fn is_recoverable_stream_error(kind: ErrorKind) -> bool {
+    matches!(
+        kind,
+        ErrorKind::Xrun | ErrorKind::RealtimeDenied | ErrorKind::DeviceChanged
+    )
+}
+
+fn validate_assignment(assignment: &BridgeChannelAssignment, label: &str) -> Result<(), String> {
+    if assignment.device_id.trim().is_empty() {
+        return Err(format!("{label} device is required"));
+    }
+    if assignment.left_channel == 0
+        || (assignment.right_channel != assignment.left_channel
+            && assignment.right_channel != assignment.left_channel + 1)
+    {
+        return Err(format!(
+            "{label} channels must be one mono channel or an adjacent one-based pair"
+        ));
+    }
+    Ok(())
+}
+
+fn status_from(state: &BridgeMediaState) -> BridgeMediaStatus {
+    let mut input_stream_ids = state.inputs.keys().cloned().collect::<Vec<_>>();
+    let mut output_stream_ids = state.outputs.keys().cloned().collect::<Vec<_>>();
+    let mut pending_output_stream_ids = state.pending_outputs.keys().cloned().collect::<Vec<_>>();
+    let mut input_stream_errors = state
+        .inputs
+        .iter()
+        .filter_map(|(stream_id, runtime)| {
+            read_last_error(&runtime.last_error).map(|message| BridgeMediaStreamError {
+                stream_id: stream_id.clone(),
+                message,
+            })
+        })
+        .collect::<Vec<_>>();
+    let mut output_stream_errors = state
+        .outputs
+        .iter()
+        .filter_map(|(stream_id, runtime)| {
+            let runtime_error = read_last_error(&runtime.last_error);
+            let mixer_error = state
+                .mixers
+                .get(&runtime.mixer_key)
+                .and_then(|mixer| read_last_error(&mixer.last_error));
+            runtime_error
+                .or(mixer_error)
+                .map(|message| BridgeMediaStreamError {
+                    stream_id: stream_id.clone(),
+                    message,
+                })
+        })
+        .collect::<Vec<_>>();
+    let mut input_stream_stats = state
+        .inputs
+        .iter()
+        .map(|(stream_id, runtime)| BridgeMediaInputStats {
+            stream_id: stream_id.clone(),
+            rms_db: runtime.audio_gain.rms_milli_db.load(Ordering::Relaxed) as f32 / 1000.0,
+            peak_db: runtime.audio_gain.peak_milli_db.load(Ordering::Relaxed) as f32 / 1000.0,
+            clipped_samples: runtime.audio_gain.clipped_samples.load(Ordering::Relaxed),
+            captured_frames: runtime.captured_frames.load(Ordering::Relaxed),
+            xrun_count: runtime.xrun_count.load(Ordering::Relaxed),
+            dropped_chunks: runtime.dropped_chunks.load(Ordering::Relaxed),
+            dropped_frames: runtime.dropped_frames.load(Ordering::Relaxed),
+            ffmpeg_warning_count: runtime.ffmpeg_warning_count.load(Ordering::Relaxed),
+            last_ffmpeg_warning: read_last_error(&runtime.last_ffmpeg_warning),
+        })
+        .collect::<Vec<_>>();
+    let mut output_stream_stats = state
+        .outputs
+        .iter()
+        .map(|(stream_id, runtime)| BridgeMediaOutputStats {
+            stream_id: stream_id.clone(),
+            rms_db: runtime.audio_gain.rms_milli_db.load(Ordering::Relaxed) as f32 / 1000.0,
+            peak_db: runtime.audio_gain.peak_milli_db.load(Ordering::Relaxed) as f32 / 1000.0,
+            clipped_samples: runtime.audio_gain.clipped_samples.load(Ordering::Relaxed),
+            decoded_frames: runtime.decoded_frames.load(Ordering::Relaxed),
+            decoded_bytes: runtime.decoded_bytes.load(Ordering::Relaxed),
+            ffmpeg_warning_count: runtime.ffmpeg_warning_count.load(Ordering::Relaxed),
+            last_ffmpeg_warning: read_last_error(&runtime.last_ffmpeg_warning),
+        })
+        .collect::<Vec<_>>();
+    input_stream_ids.sort();
+    output_stream_ids.sort();
+    pending_output_stream_ids.sort();
+    input_stream_errors.sort_by(|a, b| a.stream_id.cmp(&b.stream_id));
+    output_stream_errors.sort_by(|a, b| a.stream_id.cmp(&b.stream_id));
+    input_stream_stats.sort_by(|a, b| a.stream_id.cmp(&b.stream_id));
+    output_stream_stats.sort_by(|a, b| a.stream_id.cmp(&b.stream_id));
+    BridgeMediaStatus {
+        input_stream_ids,
+        output_stream_ids,
+        pending_output_stream_ids,
+        input_stream_errors,
+        output_stream_errors,
+        input_stream_stats,
+        output_stream_stats,
+    }
+}
+
+fn rms_milli_db(sum_squares: f64, sample_count: usize) -> i32 {
+    if sample_count == 0 || sum_squares <= 0.0 {
+        return -120_000;
+    }
+    let rms = (sum_squares / sample_count as f64).sqrt();
+    if rms <= 0.0 {
+        return -120_000;
+    }
+    let db = (20.0 * rms.log10()).clamp(-120.0, 0.0);
+    (db * 1000.0).round() as i32
+}
+
+fn read_last_error(last_error: &Arc<Mutex<Option<String>>>) -> Option<String> {
+    last_error
+        .lock()
+        .ok()
+        .and_then(|error| error.clone())
+        .filter(|message| !message.trim().is_empty())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_non_fatal_stream_notifications_are_recoverable() {
+        assert!(is_recoverable_stream_error(ErrorKind::Xrun));
+        assert!(is_recoverable_stream_error(ErrorKind::RealtimeDenied));
+        assert!(is_recoverable_stream_error(ErrorKind::DeviceChanged));
+        assert!(!is_recoverable_stream_error(ErrorKind::StreamInvalidated));
+        assert!(!is_recoverable_stream_error(ErrorKind::DeviceNotAvailable));
+    }
+
+    #[test]
+    fn builds_minimal_rtcp_receiver_report() {
+        let packet = build_rtcp_receiver_report(0x1234_5678);
+
+        assert_eq!(packet, [0x80, 201, 0, 1, 0x12, 0x34, 0x56, 0x78]);
+    }
+
+    #[test]
+    fn network_output_channels_share_one_named_sender() {
+        let left = OutputMixerKey::from_assignment(&BridgeChannelAssignment {
+            device_id: "ndi:send:2".to_string(),
+            left_channel: 1,
+            right_channel: 1,
+        });
+        let right = OutputMixerKey::from_assignment(&BridgeChannelAssignment {
+            device_id: "ndi:send:2".to_string(),
+            left_channel: 2,
+            right_channel: 2,
+        });
+        let other_slot = OutputMixerKey::from_assignment(&BridgeChannelAssignment {
+            device_id: "ndi:send:3".to_string(),
+            left_channel: 1,
+            right_channel: 2,
+        });
+
+        assert_eq!(left, right);
+        assert_ne!(left, other_slot);
+
+        let omt_left = OutputMixerKey::from_assignment(&BridgeChannelAssignment {
+            device_id: "omt:send:2".to_string(),
+            left_channel: 1,
+            right_channel: 1,
+        });
+        let omt_right = OutputMixerKey::from_assignment(&BridgeChannelAssignment {
+            device_id: "omt:send:2".to_string(),
+            left_channel: 2,
+            right_channel: 2,
+        });
+        assert_eq!(omt_left, omt_right);
+    }
+
+    #[test]
+    #[ignore = "requires an installed NDI Runtime and local NDI networking"]
+    fn configured_ndi_endpoint_stays_discoverable_without_return_audio() {
+        let manager = BridgeMediaManager::default();
+        manager
+            .ensure_output_endpoint(EnsureBridgeOutputEndpointRequest {
+                endpoint_id: "test-persistent-output".to_string(),
+                assignment: BridgeChannelAssignment {
+                    device_id: "ndi:send:7".to_string(),
+                    left_channel: 1,
+                    right_channel: 2,
+                },
+            })
+            .unwrap();
+        thread::sleep(Duration::from_millis(750));
+
+        crate::ndi::tests::run_external_audio_probe("LinkTalk Bridge 7");
+
+        manager
+            .release_output_endpoint("test-persistent-output".to_string())
+            .unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires the bundled OMT runtime and local OMT networking"]
+    fn configured_omt_endpoint_stays_discoverable_without_return_audio() {
+        let manager = BridgeMediaManager::default();
+        manager
+            .ensure_output_endpoint(EnsureBridgeOutputEndpointRequest {
+                endpoint_id: "test-persistent-omt-output".to_string(),
+                assignment: BridgeChannelAssignment {
+                    device_id: "omt:send:7".to_string(),
+                    left_channel: 1,
+                    right_channel: 2,
+                },
+            })
+            .unwrap();
+        thread::sleep(Duration::from_millis(750));
+
+        crate::omt::tests::run_external_audio_probe("LinkTalk Bridge 7", false);
+
+        manager
+            .release_output_endpoint("test-persistent-omt-output".to_string())
+            .unwrap();
+    }
+
+    #[test]
+    fn sends_handshake_from_reserved_output_port() {
+        let receiver = UdpSocket::bind("127.0.0.1:0").expect("bind handshake receiver");
+        receiver
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .expect("set receiver timeout");
+        let sender = UdpSocket::bind("127.0.0.1:0").expect("bind handshake sender");
+        let sender_port = sender.local_addr().expect("read sender address").port();
+        let receiver_port = receiver.local_addr().expect("read receiver address").port();
+
+        send_output_handshake(&sender, "127.0.0.1", receiver_port).expect("send output handshake");
+
+        let mut packet = [0_u8; 8];
+        let (bytes, source) = receiver.recv_from(&mut packet).expect("receive handshake");
+        assert_eq!(bytes, packet.len());
+        assert_eq!(source.port(), sender_port);
+        assert_eq!(packet, build_rtcp_receiver_report(OUTPUT_HANDSHAKE_SSRC));
+
+        drop(sender);
+        let rebound = UdpSocket::bind(("127.0.0.1", sender_port)).expect("rebind reserved port");
+        rebound
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .expect("set rebound timeout");
+        receiver
+            .send_to(b"return RTP", source)
+            .expect("send return packet");
+        let mut return_packet = [0_u8; 10];
+        let received = rebound
+            .recv(&mut return_packet)
+            .expect("receive return packet");
+        assert_eq!(&return_packet[..received], b"return RTP");
+    }
+}

@@ -1,0 +1,20 @@
+# Вариант для Linux: сеть хоста (проще с UDP). Запуск: docker compose -f docker-compose.host.yml up -d --build
+services:
+  linktalk:
+    build:
+      context: .
+      args:
+        TALKTOME_VERSION: "1.5.17-linktalk.1"
+    image: linktalk:latest
+    container_name: linktalk
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      PUBLIC_IP: ${LINKTALK_PUBLIC_IP:?Укажите LINKTALK_PUBLIC_IP в .env}
+      PORT: ${LINKTALK_PORT:-8443}
+      HTTP_PORT: ${LINKTALK_HTTP_PORT:-8080}
+      MDNS_HOST: "off"
+    volumes:
+      - linktalk_data:/data
+volumes:
+  linktalk_data:

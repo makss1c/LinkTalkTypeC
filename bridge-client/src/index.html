@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LinkTalk Bridge</title>
+    <script>
+      document.documentElement.dataset.platform = navigator.platform.toLowerCase().includes("mac")
+        ? "macos"
+        : navigator.platform.toLowerCase().includes("win")
+          ? "windows"
+          : "unknown";
+    </script>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="tray-section">
+        <div class="panel-header">
+          <div class="registration-controls">
+            <div class="connection-line" id="announce-status" data-state="disconnected">
+              <span></span>
+              <strong>Disconnected</strong>
+            </div>
+            <label class="switch-row startup-row" for="autostart-enabled">
+              <input id="autostart-enabled" type="checkbox" role="switch" />
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-label">Run at login</span>
+            </label>
+          </div>
+        </div>
+        <div class="server-grid">
+          <label>
+            <span>Server IP/URL</span>
+            <input id="server-url" type="url" autocomplete="url" placeholder="https://intercom.local:8443" />
+          </label>
+          <label>
+            <span>API key</span>
+            <input id="api-key" type="password" autocomplete="off" />
+          </label>
+          <label>
+            <span>Bridge name</span>
+            <input id="bridge-name" type="text" autocomplete="off" />
+          </label>
+        </div>
+        <div class="network-audio-runtime-row" id="ndi-runtime" data-state="checking">
+          <span class="network-audio-runtime-dot" aria-hidden="true"></span>
+          <div>
+            <strong>NDI Audio</strong>
+            <small id="ndi-runtime-detail">Checking optional NDI Runtime…</small>
+          </div>
+          <div class="network-audio-runtime-actions">
+            <button id="refresh-ndi" type="button">Refresh</button>
+            <a id="ndi-runtime-link" class="network-audio-runtime-link" href="https://ndi.video/tools/" target="_blank" rel="noreferrer" title="NDI information and runtime download" aria-label="NDI information and runtime download">Info</a>
+          </div>
+        </div>
+        <div class="network-audio-runtime-row" id="omt-runtime" data-state="checking">
+          <span class="network-audio-runtime-dot" aria-hidden="true"></span>
+          <div>
+            <strong>OMT Audio</strong>
+            <small id="omt-runtime-detail">Checking bundled OMT backend…</small>
+          </div>
+          <div class="network-audio-runtime-actions">
+            <button id="refresh-omt" type="button">Refresh</button>
+            <a id="omt-runtime-link" class="network-audio-runtime-link" href="https://www.openmediatransport.org/" target="_blank" rel="noreferrer" title="OMT information" aria-label="OMT information">Info</a>
+          </div>
+        </div>
+        <div class="audio-scan-status" id="audio-scan-status" role="status"></div>
+        <div class="connection-error" id="announce-error" role="status"></div>
+        <div class="autostart-status" id="autostart-status"></div>
+      </section>
+
+      <section class="tray-section">
+        <div class="panel-header">
+          <div>
+            <h2>Managed bridge ports</h2>
+          </div>
+        </div>
+        <div class="managed-port-list" id="bridge-ports"></div>
+      </section>
+
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
