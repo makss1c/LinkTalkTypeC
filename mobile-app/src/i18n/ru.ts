@@ -3,6 +3,16 @@
  * Полноту проверяет i18n/coverage.test.ts: каждая фраза в коде должна иметь перевод здесь.
  */
 export const RU: Record<string, string> = {
+  'Taking longer than usual. Check the server address and the network.': 'Подключение затянулось. Проверьте адрес сервера и сеть.',
+  'Back to sign in': 'Вернуться ко входу',
+  'Group call': 'Групповой вызов',
+  'Select several targets and talk to all of them at once': 'Выберите несколько абонентов и говорите всем сразу',
+  'Talk to selected ({count})': 'Говорить выбранным ({count})',
+  'Tap targets to select': 'Выберите абонентов',
+  'Select {name} for group call': 'Выбрать «{name}» для группового вызова',
+  'All': 'Все',
+  'Clear': 'Сброс',
+  'No selected targets are available.': 'Выбранные абоненты недоступны.',
   'Monitoring': 'Подслушка',
   'Forced': 'Принудительно',
   'On': 'Вкл',

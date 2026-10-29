@@ -9,6 +9,7 @@ import {
   type TalkTarget,
 } from '../protocol';
 import { missingAccessoryNotice } from '../ble/bindings';
+import { useGroupTalk } from '../app/groupTalk';
 import { connectionHealthFromSession } from '../session/connectionHealth';
 import { mainButtonStorageKey, resolveMainButton } from '../session/mainButton';
 import { session, useSessionStore } from '../session/store';
@@ -112,6 +113,23 @@ export function OperatorScreen() {
   const expandHeader = () => {
     setHeaderCollapsed(false);
   };
+
+  const groupActive = useGroupTalk((state) => state.active);
+  const groupKeys = useGroupTalk((state) => state.keys);
+  const selectedTargets = store.targets.filter(
+    (target) => groupKeys.includes(talkTargetIdentity(target)) && session.canTalkTo(target),
+  );
+  const groupTalking =
+    store.talking &&
+    selectedTargets.length > 0 &&
+    selectedTargets.every((target) => store.talkingTargetKeys.includes(talkTargetIdentity(target)));
+  const groupLocked = selectedTargets.some((target) => store.lockedTargetKeys.includes(talkTargetIdentity(target)));
+  const selectAllTalkable = () =>
+    useGroupTalk.getState().setKeys(
+      store.targets
+        .filter((target) => target.type !== 'feed' && session.canTalkTo(target))
+        .map((target) => talkTargetIdentity(target)),
+    );
 
   const mainTarget = mainButton.target;
   const mainKey = mainTarget ? talkTargetIdentity(mainTarget) : '';
@@ -220,6 +238,67 @@ export function OperatorScreen() {
     </HoldToTalk>
   );
 
+  const groupToggle = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: groupActive }}
+      accessibilityLabel={tr('Group call')}
+      accessibilityHint={tr('Select several targets and talk to all of them at once')}
+      onPress={() => useGroupTalk.getState().setActive(!groupActive)}
+      style={[styles.groupToggle, compact && styles.groupToggleCompact, groupActive && styles.groupToggleOn]}
+    >
+      <Text style={[styles.groupToggleText, groupActive && styles.groupToggleTextOn]}>{tr('Group')}</Text>
+    </Pressable>
+  );
+
+  const groupTalkButton = (
+    <HoldToTalk
+      accessibilityLabel={tr('Talk to selected ({count})', { count: selectedTargets.length })}
+      disabled={selectedTargets.length === 0}
+      locked={groupLocked}
+      leftHanded={store.leftHanded}
+      onPress={() => void session.pressTalkSet(selectedTargets)}
+      onLock={() => void session.lockTalkSet(selectedTargets)}
+      onRelease={() => void session.releaseTalkSet(selectedTargets)}
+      style={[
+        styles.reply,
+        replyBeside && styles.replyLandscape,
+        compact && !replyBeside && styles.replyCompact,
+        store.bigMainButton && styles.replyBig,
+        store.bigMainButton && replyBeside && styles.replyBigLandscape,
+        groupTalking && styles.replyActive,
+        selectedTargets.length === 0 && styles.replyDisabled,
+      ]}
+    >
+      <View style={[styles.replyContent, (store.bigMainButton || replyBeside) && styles.replyContentStacked]}>
+        <View style={[styles.replyTitle, store.bigMainButton && styles.replyTitleBig, replyBeside && styles.replyTitleLandscape]}>
+          {groupLocked ? (
+            <LockIcon color={groupTalking ? colors.onAccent : colors.text} size={22} />
+          ) : (
+            <WalkieTalkieIcon color={selectedTargets.length ? (groupTalking ? colors.onAccent : colors.accent) : colors.dim} size={22} />
+          )}
+          <Text
+            numberOfLines={2}
+            style={[
+              styles.replyText,
+              replyBeside && styles.replyTextLandscape,
+              store.bigMainButton && styles.replyTextBig,
+              groupTalking && styles.replyTextActive,
+              selectedTargets.length === 0 && styles.replyMuted,
+            ]}
+          >
+            {selectedTargets.length
+              ? tr('Talk to selected ({count})', { count: selectedTargets.length })
+              : tr('Tap targets to select')}
+          </Text>
+        </View>
+        {selectedTargets.length && !compact ? (
+          <Text style={styles.replyHint}>{tr(slideToLockHint(store.leftHanded))}</Text>
+        ) : null}
+      </View>
+    </HoldToTalk>
+  );
+
   return (
     <View
       onLayout={(event) => {
@@ -292,6 +371,17 @@ export function OperatorScreen() {
                 <ChevronIcon color={colors.text} direction="up" />
               </Pressable>
             ) : null}
+            {groupActive ? (
+              <>
+                <Pressable accessibilityRole="button" onPress={selectAllTalkable} style={[styles.groupChip, compact && styles.groupToggleCompact]}>
+                  <Text style={styles.groupToggleText}>{tr('All')}</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={() => useGroupTalk.getState().clear()} style={[styles.groupChip, compact && styles.groupToggleCompact]}>
+                  <Text style={styles.groupToggleText}>{tr('Clear')}</Text>
+                </Pressable>
+              </>
+            ) : null}
+            {groupToggle}
             <AudioRouteButton />
             {layerButton}
           </View>
@@ -351,7 +441,7 @@ export function OperatorScreen() {
             </View>
           ))}
         </View>
-        {replyButton}
+        {groupActive ? groupTalkButton : replyButton}
       </View>
 
       <ConferenceMembersModal target={conferenceTarget} onClose={() => setConferenceTarget(null)} />
@@ -360,6 +450,29 @@ export function OperatorScreen() {
 }
 
 const styles = StyleSheet.create({
+  groupToggle: {
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.s2,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+  },
+  groupToggleCompact: { minHeight: 34, paddingHorizontal: 10 },
+  groupToggleOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  groupChip: {
+    minHeight: 40,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+  },
+  groupToggleText: { color: colors.text, fontWeight: '800', fontSize: 13, letterSpacing: 0.4 },
+  groupToggleTextOn: { color: colors.onAccent },
   screen: { flex: 1, paddingHorizontal: 18, paddingTop: 8, paddingBottom: 14, backgroundColor: colors.bg },
   screenLandscape: { paddingBottom: 10 },
   screenCompact: { paddingHorizontal: 10, paddingTop: 4, paddingBottom: 8 },

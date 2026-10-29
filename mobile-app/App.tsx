@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ActivityIndicator, BackHandler, Linking, Platform, SafeAreaView, StyleSheet, View, useColorScheme } from 'react-native';
+import { BackHandler, Linking, Platform, SafeAreaView, StyleSheet, View, useColorScheme } from 'react-native';
 import { ScreenStack, ScreenStackItem } from 'react-native-screens';
 import { StatusBar } from 'expo-status-bar';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
@@ -14,6 +14,7 @@ import {
   tallyFrameStrokeWidth,
 } from './src/protocol';
 import { androidSafeArea } from './src/ui/androidSafeArea';
+import { ConnectingScreen } from './src/ui/ConnectingScreen';
 import { LoginScreen } from './src/ui/LoginScreen';
 import { ModeSelectScreen } from './src/ui/ModeSelectScreen';
 import { WalkieScreen } from './src/ui/WalkieScreen';
@@ -194,7 +195,7 @@ function AppScreen({ screen }: { screen: Screen }) {
     case 'profiles':
       return <ProfilePickerScreen />;
     default:
-      return <ActivityIndicator color={colors.accent} />;
+      return <ConnectingScreen />;
   }
 }
 

@@ -8,6 +8,7 @@ import {
   talkTargetIdentity,
   type TalkTarget,
 } from '../protocol';
+import { useGroupTalk } from '../app/groupTalk';
 import { session, useSessionStore } from '../session/store';
 import { incomingHighlightsTarget } from '../talk/replyTarget';
 import { HoldToTalk } from './HoldToTalk';
@@ -58,6 +59,9 @@ export function TargetRow({
   const feedOnline = useSessionStore((state) => state.activeFeedKeys.includes(key));
   const volumeFader = useSessionStore((state) => state.operatorAudio.volumeFader);
   const canTalk = session.canTalkTo(target);
+  const groupActive = useGroupTalk((state) => state.active);
+  const selected = useGroupTalk((state) => state.keys.includes(key));
+  const selectable = groupActive && canTalk && target.type !== 'feed';
   // Web `#targets-list .talk-btn` always paints the walkie, including offline
   // users. Feeds and listen-only conferences have no talk button.
   const showTalkIcon = target.canTalk && target.type !== 'feed';
@@ -144,6 +148,7 @@ export function TargetRow({
     <View style={styles.identity} pointerEvents="none">
       <View style={styles.nameRow}>
         {locked ? <LockIcon color={colors.text} size={14} /> : null}
+        {selected ? <Text style={styles.selectedMark}>✓</Text> : null}
         <Text style={[styles.label, dimmed && styles.dimText]} numberOfLines={1}>
           {target.label}
         </Text>
@@ -155,6 +160,20 @@ export function TargetRow({
   );
 
   const wrapTalk = (children: ReactNode, style: StyleProp<ViewStyle>, accessibilityLabel: string) => {
+    if (selectable) {
+      // Групповой вызов: нажатие выбирает абонента, а не начинает передачу.
+      return (
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: selected }}
+          accessibilityLabel={tr('Select {name} for group call', { name: target.label })}
+          onPress={() => useGroupTalk.getState().toggleKey(key)}
+          style={style}
+        >
+          {children}
+        </Pressable>
+      );
+    }
     if (canTalk) {
       return (
         <HoldToTalk
@@ -212,6 +231,7 @@ export function TargetRow({
     styles.row,
     leftHanded && styles.rowLeft,
     tight && styles.rowCompact,
+    selected && styles.rowSelected,
     talking && styles.rowTalking,
     speaking && !talking && styles.rowSpeaking,
     dimmed && styles.rowOffline,
@@ -262,6 +282,8 @@ export function TargetRow({
 }
 
 const styles = StyleSheet.create({
+  rowSelected: { borderColor: colors.accent, borderWidth: 2, backgroundColor: colors.accentSoft },
+  selectedMark: { color: colors.accent, fontSize: 16, fontWeight: '900', marginRight: 4 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

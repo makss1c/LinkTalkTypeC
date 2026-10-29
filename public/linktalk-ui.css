@@ -309,3 +309,30 @@ html body .settings-nav-button__desc { color: var(--lt-muted); }
 html body .login-brand { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding-right: 92px; }
 html body .login-brand .login-title { flex: 1 1 120px; min-width: 0; margin: 0; font-size: 1.02rem; letter-spacing: .03em; line-height: 1.2; overflow-wrap: break-word; hyphens: none; }
 html body .login-brand .linktalk-credit { flex: 0 0 100%; margin: 4px 0 0; text-align: left; }
+
+/* ========================================================================
+ * ИСПРАВЛЕНИЯ ВЁРСТКИ АДМИНКИ: ничего не вылезает за экран, текст не обрезается
+ * ====================================================================== */
+html body main#admin-app { grid-template-columns: minmax(0, 1fr) !important; }
+html body main#admin-app > *, html body .card-section-body, html body .card-section-body > *, html body .entity-layout > *, html body .status-group { min-width: 0; max-width: 100%; }
+html body .status-table-wrap { overflow-x: auto; max-width: 100%; }
+html body .status-summary { grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)) !important; }
+html body .status-summary__value { overflow-wrap: anywhere; font-size: clamp(1.1rem, 2.2vw, 1.6rem); line-height: 1.15; }
+html body .status-summary__label { overflow-wrap: anywhere; line-height: 1.25; }
+html body .entity-layout { grid-template-columns: minmax(200px, 300px) minmax(0, 1fr) !important; }
+html body .list-item-header { flex-wrap: wrap; row-gap: 8px; }
+html body .inline-controls { flex-wrap: wrap; }
+html body button.small, html body .small { flex: 0 0 auto; white-space: normal; max-width: 100%; text-align: center; line-height: 1.2; overflow-wrap: normal; word-break: normal; }
+html body label:not(.visually-hidden) { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+html body table { max-width: 100%; }
+html body .admin-bar__nav a { flex: 0 0 auto; white-space: nowrap; }
+
+@media (max-width: 1100px) {
+  html body .entity-layout { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (max-width: 820px) {
+  html body .lt-live-wrap { grid-template-columns: minmax(0, 1fr); }
+  html body .lt-panel { min-width: 0; }
+  html body .lt-live-graph svg { min-width: 520px; }
+  html body .lt-live-graph { overflow-x: auto; }
+}
