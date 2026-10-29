@@ -1,0 +1,158 @@
+/* ============================================================================
+ * LinkTalk «Console» — вторая, структурная переработка интерфейса веба.
+ * Подключается ПОСЛЕ linktalk-ui.css. Отличия от исходного проекта:
+ *  - вход: разделённый экран с иллюстрацией, форма — выдвижная панель справа;
+ *  - интерком: «стена плиток» вместо списка строк, плавающая кнопка ответа, шапка-«капсула»;
+ *  - админка: рабочий стол с KPI-плитками, угловыми скобками на панелях, нумерацией разделов.
+ * Разработчик: makss1c · https://t.me/makss1c
+ * ========================================================================== */
+
+/* ---------- фон-координатная сетка ---------- */
+html body {
+  background:
+    radial-gradient(900px 520px at 85% -10%, rgba(255, 107, 26, 0.10), transparent 70%),
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px) 0 0 / 44px 44px,
+    #050505;
+  background-attachment: fixed;
+}
+
+/* ---------- ВХОД: разделённый экран ---------- */
+html body .login-overlay {
+  display: flex; align-items: stretch; justify-content: flex-end;
+  padding: 0; backdrop-filter: none;
+  background:
+    linear-gradient(90deg, rgba(5, 5, 5, 0) 38%, rgba(5, 5, 5, 0.92) 78%, #050505 100%),
+    url("/images/login-art.svg") left center / cover no-repeat,
+    #050505;
+}
+html body .login-overlay::after {
+  content: "Every channel.\A One tap."; white-space: pre; position: absolute; left: 6vw; bottom: 14vh;
+  font: 900 clamp(2rem, 4.2vw, 3.6rem)/1.04 var(--lt-display); letter-spacing: .02em; text-transform: uppercase;
+  color: #fff; text-shadow: 0 6px 40px rgba(0, 0, 0, .7); pointer-events: none;
+}
+html[lang="ru"] body .login-overlay::after { content: "Каждый канал.\A Одно касание."; }
+html body .login-card {
+  max-width: 480px; width: min(480px, 100%); margin: 0; border-radius: 0; border: 0;
+  border-left: 1px solid var(--lt-line); background: rgba(8, 8, 9, 0.9); backdrop-filter: blur(18px);
+  display: flex; flex-direction: column; justify-content: center; padding: 56px 48px;
+  box-shadow: -40px 0 120px rgba(0, 0, 0, .6); z-index: 2;
+}
+html body .login-card::before {
+  content: ""; position: absolute; left: -1px; top: 18%; bottom: 18%; width: 3px;
+  background: linear-gradient(var(--lt-accent), var(--lt-amber)); box-shadow: 0 0 24px var(--lt-accent);
+}
+html body .login-title { font-size: 1.15rem; }
+html body .login-input, html body .login-field input { background: rgba(255, 255, 255, .04); border-radius: 14px; }
+html body .login-submit { border-radius: 14px; text-transform: uppercase; letter-spacing: .14em; font-size: .86rem; }
+@media (max-width: 820px) {
+  html body .login-overlay {
+    background:
+      linear-gradient(180deg, rgba(5, 5, 5, 0) 10%, #050505 46%),
+      url("/images/login-art.svg") 30% top / auto 52vh no-repeat, #050505;
+    align-items: flex-end; justify-content: center;
+  }
+  html body .login-overlay::after { left: 24px; right: 24px; top: 9vh; bottom: auto; font-size: 1.9rem; }
+  html body .login-card { width: 100%; max-width: none; border-left: 0; border-top: 1px solid var(--lt-line); border-radius: 28px 28px 0 0; padding: 28px 22px 30px; box-shadow: 0 -30px 80px rgba(0,0,0,.6); }
+  html body .login-card::before { left: 22%; right: 22%; top: -1px; bottom: auto; width: auto; height: 3px; }
+}
+
+/* ---------- ИНТЕРКОМ ---------- */
+html body #intercom-app { max-width: none; padding: 0 0 120px; }
+
+/* шапка — плавающая капсула */
+html body #intercom-app .session-bar {
+  position: sticky; top: 12px; z-index: 30; margin: 12px auto 0; width: min(1180px, calc(100% - 24px));
+  display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 14px; border-radius: 999px;
+  background: rgba(14, 14, 15, .82); backdrop-filter: blur(16px); border: 1px solid var(--lt-line-strong);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+html body #intercom-app .session-info { flex: 1; min-width: 0; gap: 10px; font: 600 12px/1.2 var(--lt-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--lt-muted); }
+html body #intercom-app #my-id { color: var(--lt-text); font-family: var(--lt-display); font-size: 15px; letter-spacing: .06em; }
+html body #intercom-app .settings-trigger { width: 42px; height: 42px; border-radius: 50%; padding: 0; background: var(--lt-accent); color: #140700; border-color: var(--lt-accent); }
+html body #intercom-app .target-layer-switcher button { border-radius: 999px; font: 700 12px var(--lt-mono); letter-spacing: .1em; text-transform: uppercase; }
+
+/* стена плиток */
+html body #targets-list {
+  list-style: none; margin: 0 auto; padding: 22px 12px; width: min(1180px, 100%);
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 14px;
+}
+html body #targets-list li.target-item {
+  position: relative; overflow: hidden; display: grid; gap: 4px 12px; align-items: center;
+  grid-template-columns: 1fr auto; grid-template-areas: "icon actions" "info info" "meter meter";
+  min-height: 164px; padding: 16px 16px 20px; border-radius: 22px; list-style: none;
+  background: linear-gradient(160deg, #171718 0%, #0e0e0f 70%); border: 1px solid var(--lt-line);
+  box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 18px 40px rgba(0,0,0,.35);
+  transition: transform .12s ease, border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+html body #targets-list li.target-item::before {              /* угловая метка типа */
+  content: attr(data-type); position: absolute; top: 22px; left: 84px; font: 700 9px var(--lt-mono); letter-spacing: .22em; text-transform: uppercase; color: var(--lt-dim);
+}
+html body #targets-list li.target-item:active { transform: scale(.985); }
+html body #targets-list li.target-item .user-icon, html body #targets-list li.target-item .conf-icon, html body #targets-list li.target-item .feed-icon {
+  grid-area: icon; width: 54px; height: 54px; border-radius: 18px; display: grid; place-items: center;
+  font: 900 24px var(--lt-display); color: #140700; background: linear-gradient(135deg, var(--lt-amber), var(--lt-accent));
+  box-shadow: 0 10px 26px rgba(255, 107, 26, .28);
+}
+html body #targets-list li.target-item .target-info { grid-area: info; min-width: 0; display: grid; gap: 8px; margin-top: 10px; }
+html body #targets-list li.target-item .target-label { font: 900 20px/1.1 var(--lt-display); letter-spacing: .04em; text-transform: uppercase; color: var(--lt-text); overflow-wrap: anywhere; }
+html body #targets-list li.target-item .target-status { font: 600 11px var(--lt-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--lt-dim); }
+html body #targets-list li.target-item .volume-slider { width: 100%; height: 4px; opacity: .85; }
+html body #targets-list li.target-item .target-actions { grid-area: actions; display: flex; align-items: center; gap: 8px; flex-direction: row-reverse; }
+html body #targets-list li.target-item .talk-btn {
+  width: 62px; height: 62px; border-radius: 50%; padding: 0; display: grid; place-items: center;
+  background: radial-gradient(circle at 35% 30%, #2a2a2d, #111); border: 2px solid var(--lt-accent);
+  box-shadow: 0 0 0 4px rgba(255, 107, 26, .12), 0 10px 26px rgba(0, 0, 0, .5);
+}
+html body #targets-list li.target-item .mute-btn { width: 38px; height: 38px; border-radius: 12px; padding: 0; background: rgba(255,255,255,.05); border-color: var(--lt-line); }
+/* уровень входящего звука — горизонтальная кромка плитки (показывается при включённой настройке) */
+html body.show-incoming-levels #targets-list li.target-item {
+  grid-template-columns: 1fr auto; grid-template-areas: "icon actions" "info info" "meter meter"; column-gap: 12px;
+}
+html body.show-incoming-levels #targets-list li.target-item .target-level-meter {
+  grid-area: meter; position: absolute; left: 0; right: 0; bottom: 0; width: auto; height: 6px; border-radius: 0; box-shadow: none; background: rgba(255,255,255,.06);
+}
+html body.show-incoming-levels #targets-list li.target-item .target-level-meter__fill {
+  inset: 0; border-radius: 0; clip-path: inset(0 calc(100% - var(--meter-level, 0%)) 0 0);
+  background: linear-gradient(90deg, var(--lt-accent-deep), var(--lt-accent), var(--lt-amber));
+}
+html body #targets-list li.target-item .slide-to-lock-hint { position: absolute; right: 16px; bottom: 14px; font: 600 10px var(--lt-mono); letter-spacing: .1em; color: var(--lt-dim); }
+
+/* состояния */
+html body #targets-list li.target-item.speaking {
+  border-color: var(--lt-amber); background: linear-gradient(160deg, #2a1c08, #0f0b06);
+  box-shadow: 0 0 0 1px rgba(255, 181, 71, .5), 0 0 44px rgba(255, 181, 71, .22);
+}
+html body #targets-list li.target-item.talking-to, html body #targets-list li.target-item.ptt-pressing {
+  border-color: var(--lt-accent); background: linear-gradient(160deg, #ff7a2e, #d94f00);
+  box-shadow: 0 0 0 1px #ffb27a, 0 0 56px rgba(255, 107, 26, .5); transform: translateY(-2px);
+}
+html body #targets-list li.target-item.talking-to .target-label, html body #targets-list li.target-item.ptt-pressing .target-label,
+html body #targets-list li.target-item.talking-to .target-status, html body #targets-list li.target-item.talking-to::before { color: #140700; }
+html body #targets-list li.target-item.talking-to .user-icon { background: #140700; color: var(--lt-accent); box-shadow: none; }
+html body #targets-list li.target-item.is-offline {
+  opacity: .62; border-style: dashed;
+  background: repeating-linear-gradient(135deg, #0d0d0e 0 10px, #101011 10px 20px);
+}
+html body #targets-list li.target-item.is-offline .user-icon { background: #232325; color: #6f6f75; box-shadow: none; }
+html body #targets-list li.target-item.is-offline .talk-btn { border-color: #2b2b2e; box-shadow: none; }
+
+/* кнопка ответа — плавающая «капсула» по центру */
+html body .reply-bar {
+  position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 40;
+  background: none; border: 0; padding: 0; width: auto;
+}
+html body .reply-bar button {
+  min-width: 220px; height: 64px; padding: 0 34px; border-radius: 999px; font: 900 16px var(--lt-display); letter-spacing: .2em; text-transform: uppercase;
+  color: #140700; background: linear-gradient(135deg, #ffb547, #ff6b1a); border: 0; box-shadow: 0 16px 50px rgba(255, 107, 26, .45), 0 0 0 6px rgba(255, 107, 26, .12);
+}
+html body .reply-bar button:disabled { background: #1c1c1e; color: var(--lt-dim); box-shadow: 0 0 0 1px var(--lt-line); }
+html body .reply-bar button:hover:not(:disabled) { filter: brightness(1.08); background: linear-gradient(135deg, #ffc060, #ff7424); color: #140700; }
+
+@media (max-width: 560px) {
+  html body #targets-list { grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 10px; }
+  html body #targets-list li.target-item { min-height: 150px; padding: 12px 12px 18px; border-radius: 18px; }
+  html body #targets-list li.target-item .talk-btn { width: 52px; height: 52px; }
+  html body #targets-list li.target-item .target-label { font-size: 16px; }
+  html body .reply-bar button { min-width: 0; width: calc(100vw - 32px); }
+}

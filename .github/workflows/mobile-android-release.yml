@@ -21,7 +21,8 @@ on:
 
 concurrency:
   group: mobile-android-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Не отменяем сборку, если пришёл новый push: иначе лог обрывается на «The operation was canceled».
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -29,6 +30,7 @@ permissions:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     env:
       ANDROID_PACKAGE: ${{ vars.LINKTALK_ANDROID_PACKAGE }}
     steps:

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import type { MonitorLink } from '../protocol/monitor';
 import type { CertificateProbe } from '../servers/tlsTrust';
 import type {
   IncomingTalkState,
@@ -39,6 +40,8 @@ export type SessionUiState = {
   pendingCertificate: CertificateProbe | null;
   identity: OperatorIdentity | null;
   productions: Production[];
+  /** LinkTalk: доступные «подслушки» (кого можно слушать постоянно). */
+  monitors: MonitorLink[];
   productionId: number | null;
   productionName: string | null;
   cameraTally: CameraTallyState;
@@ -135,6 +138,7 @@ export const initialState: SessionUiState = {
   pendingCertificate: null,
   identity: null,
   productions: [],
+  monitors: [],
   productionId: null,
   productionName: null,
   cameraTally: EMPTY_CAMERA_TALLY,

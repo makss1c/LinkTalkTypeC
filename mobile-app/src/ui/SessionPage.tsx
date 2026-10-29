@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
 import { useAppMode } from '../app/appMode';
@@ -47,6 +47,10 @@ export function SessionPage({
   const connection = connectionHealthFromSession(store);
   const appMode = useAppMode((state) => state.mode);
   const [aboutOpen, setAboutOpen] = useState(false);
+
+  useEffect(() => {
+    void session.refreshMonitors();
+  }, []);
 
   const disconnect = () => {
     Alert.alert(
@@ -106,6 +110,24 @@ export function SessionPage({
           <LangSwitch />
         </View>
       </SettingsSection>
+
+      {store.monitors.length > 0 ? (
+        <SettingsSection title={tr('Monitoring')}>
+          {store.monitors.map((monitor) => (
+            <SettingsRow
+              key={monitor.targetUserId}
+              label={monitor.name}
+              value={monitor.forced ? tr('Forced') : monitor.enabled ? tr('On') : tr('Off')}
+              selected={monitor.enabled}
+              onPress={monitor.forced ? undefined : () => void session.setMonitor(monitor.targetUserId, !monitor.enabled)}
+            />
+          ))}
+          <SettingsHint
+            full={tr('You hear this person at all times, whoever they talk to. The administrator grants this in the Matrix.')}
+            compact={tr('Hear this person at all times.')}
+          />
+        </SettingsSection>
+      ) : null}
 
       <SettingsSection title={tr('Work mode')}>
         <SettingsRow

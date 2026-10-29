@@ -2277,7 +2277,56 @@ ensureDefaultAdmin();
 
 
 
+
+// ---------- LinkTalk: подслушка (мониторинг) ----------
+function getAllMonitorLinks() {
+  return db.prepare(`
+    SELECT user_id AS userId, target_user_id AS targetUserId, forced, enabled
+    FROM user_monitor
+    ORDER BY user_id, target_user_id
+  `).all().map((row) => ({
+    userId: row.userId,
+    targetUserId: row.targetUserId,
+    forced: row.forced === 1,
+    enabled: row.enabled === 1,
+  }));
+}
+
+function getMonitorLinksForUser(userId) {
+  return getAllMonitorLinks().filter((link) => link.userId === Number(userId));
+}
+
+/** Выдать или отозвать право слушать; forced=true включает прослушку принудительно. */
+function setMonitorGrant(userId, targetUserId, { allowed = true, forced = false } = {}) {
+  const user = Number(userId);
+  const target = Number(targetUserId);
+  if (!Number.isInteger(user) || !Number.isInteger(target) || user < 1 || target < 1 || user === target) {
+    throw new Error('Invalid monitor pair');
+  }
+  if (!allowed) {
+    db.prepare('DELETE FROM user_monitor WHERE user_id = ? AND target_user_id = ?').run(user, target);
+    return;
+  }
+  db.prepare(`
+    INSERT INTO user_monitor (user_id, target_user_id, forced, enabled)
+    VALUES (?, ?, ?, 0)
+    ON CONFLICT(user_id, target_user_id) DO UPDATE SET forced = excluded.forced
+  `).run(user, target, forced ? 1 : 0);
+}
+
+/** Пользователь включает/выключает свою прослушку. Работает только если право выдано администратором. */
+function setMonitorEnabled(userId, targetUserId, enabled) {
+  const result = db.prepare(`
+    UPDATE user_monitor SET enabled = ? WHERE user_id = ? AND target_user_id = ? AND forced = 0
+  `).run(enabled ? 1 : 0, Number(userId), Number(targetUserId));
+  return result.changes > 0;
+}
+
 module.exports = {
+  getAllMonitorLinks,
+  getMonitorLinksForUser,
+  setMonitorGrant,
+  setMonitorEnabled,
   saveBrowserSession,
   getBrowserSessionByToken,
   deleteBrowserSession,

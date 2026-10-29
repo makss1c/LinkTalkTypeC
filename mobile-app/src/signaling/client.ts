@@ -7,6 +7,7 @@ import type { PanelAudioSettings, PanelAudioState, PanelClientReport, PanelComma
 
 import { cookieHeader, type CookieMap } from '../auth/cookieJar';
 import { parseIncomingTalkState } from '../protocol/incomingTalk';
+import { parseMonitors, type MonitorLink } from '../protocol/monitor';
 import { SocketEvent } from '../protocol/events';
 import { parseActiveProducer, parseActiveProducers } from '../protocol/producers';
 import { parseProductionId, parseProductions, type Production } from '../protocol/productions';
@@ -36,6 +37,7 @@ export type SignalingHandlers = {
   onUserList?: (peers: PeerSession[]) => void;
   onSessionKicked?: (info: SessionKickInfo) => void;
   onTargetsUpdated?: () => void;
+  onMonitorState?: (monitors: MonitorLink[]) => void;
   onConferenceMembersUpdated?: (conferenceId?: number | null) => void;
   onIncomingTalkState?: (state: IncomingTalkState) => void;
   onForceStopTransmission?: () => void;
@@ -249,6 +251,26 @@ export class SignalingClient {
     return productionId;
   }
 
+  /** LinkTalk: список разрешённых прослушек. Старые серверы не знают события — вернётся []. */
+  async getMonitors(): Promise<MonitorLink[]> {
+    try {
+      return parseMonitors(await this.emitAck<unknown>(SocketEvent.monitorGet));
+    } catch {
+      return [];
+    }
+  }
+
+  async setMonitor(targetUserId: number, enabled: boolean): Promise<MonitorLink[]> {
+    const response = await this.emitAck<{ ok?: boolean; error?: string; monitors?: unknown }>(SocketEvent.monitorSet, {
+      targetUserId,
+      enabled,
+    });
+    if (response?.error) {
+      throw new Error(response.error);
+    }
+    return parseMonitors(response);
+  }
+
   async requestActiveProducers(): Promise<ActiveProducer[]> {
     const payload = await this.emitAck<unknown>(SocketEvent.requestActiveProducers);
     return parseActiveProducers(payload);
@@ -409,6 +431,9 @@ export class SignalingClient {
 
     socket.on(SocketEvent.userList, (payload) => {
       this.handlers.onUserList?.(parsePeerSessions(payload));
+    });
+    socket.on(SocketEvent.monitorState, (payload) => {
+      this.handlers.onMonitorState?.(parseMonitors(payload));
     });
     socket.on(SocketEvent.userTargetsUpdated, () => {
       this.handlers.onTargetsUpdated?.();

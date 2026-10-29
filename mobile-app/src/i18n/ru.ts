@@ -3,6 +3,12 @@
  * Полноту проверяет i18n/coverage.test.ts: каждая фраза в коде должна иметь перевод здесь.
  */
 export const RU: Record<string, string> = {
+  'Monitoring': 'Подслушка',
+  'Forced': 'Принудительно',
+  'On': 'Вкл',
+  'Off': 'Выкл',
+  'You hear this person at all times, whoever they talk to. The administrator grants this in the Matrix.': 'Вы постоянно слышите этого абонента, с кем бы он ни говорил. Право выдаёт администратор в матрице.',
+  'Hear this person at all times.': 'Слышать этого абонента постоянно.',
   // ---- общее
   About: 'О программе',
   Cancel: 'Отмена',

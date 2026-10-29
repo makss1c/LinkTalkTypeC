@@ -1,11 +1,6 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, BackHandler, Linking, Platform, SafeAreaView, StyleSheet, View, useColorScheme } from 'react-native';
-import {
-  ScreenStack,
-  ScreenStackItem,
-  type StackAnimationTypes,
-  type StackPresentationTypes,
-} from 'react-native-screens';
+import { ScreenStack, ScreenStackItem } from 'react-native-screens';
 import { StatusBar } from 'expo-status-bar';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
@@ -84,8 +79,6 @@ function AppInner() {
   let pages: Page[] = [screen];
   if (loginOverProfiles) {
     pages = ['profiles', 'login'];
-  } else if (sheetOpen) {
-    pages = [screen === 'walkie' ? 'walkie' : 'operator', 'sheet'];
   }
 
   useEffect(() => {
@@ -112,22 +105,6 @@ function AppInner() {
         <StatusBar style="light" />
         <ScreenStack style={styles.stack}>
           {pages.map((page, index) => {
-            if (page === 'sheet') {
-              return (
-                <ScreenStackItem
-                  key={page}
-                  screenId={page}
-                  headerConfig={HIDDEN_HEADER}
-                  {...sheetPresentation()}
-                  gestureEnabled
-                  fullScreenSwipeEnabled={false}
-                  onDismissed={closeSessionSheet}
-                  contentStyle={Platform.OS === 'ios' && Platform.isPad ? null : { backgroundColor: sheetColor }}
-                >
-                  <SessionSheet onClose={closeSessionSheet} />
-                </ScreenStackItem>
-              );
-            }
             // Only pages pushed on another one slide and swipe back; other screens swap in place.
             const pushed = index > 0;
             return (
@@ -152,6 +129,12 @@ function AppInner() {
           })}
         </ScreenStack>
       </SafeAreaView>
+      {sheetOpen ? (
+        // Меню сессии — обычный слой поверх экрана (не нативный экран): так нажатия гарантированно работают.
+        <View style={[styles.sheetOverlay, androidSafeArea, { backgroundColor: sheetColor }]}>
+          <SessionSheet onClose={closeSessionSheet} />
+        </View>
+      ) : null}
       {identity && operatorReady && tallyColor && modeConfirmed ? <TallyScreenFrame color={tallyColor} /> : null}
     </View>
   );
@@ -190,17 +173,7 @@ export default function App() {
 
 type Screen = 'loading' | 'mode' | 'walkie' | 'operator' | 'production' | 'paused' | 'login' | 'profiles';
 
-type Page = Screen | 'sheet';
-
-/** iPhone: native page sheet (swipe down closes). iPad: transparent, so the sheet can close on a tap outside. */
-function sheetPresentation(): { stackPresentation: StackPresentationTypes; stackAnimation: StackAnimationTypes } {
-  if (Platform.OS === 'ios') {
-    return Platform.isPad
-      ? { stackPresentation: 'transparentModal', stackAnimation: 'fade' }
-      : { stackPresentation: 'pageSheet', stackAnimation: 'default' };
-  }
-  return { stackPresentation: 'modal', stackAnimation: 'slide_from_bottom' };
-}
+type Page = Screen;
 
 const HIDDEN_HEADER = { hidden: true };
 
@@ -264,6 +237,10 @@ const styles = StyleSheet.create({
   },
   page: {
     backgroundColor: colors.bgBottom,
+  },
+  sheetOverlay: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 30,
   },
   tallyFrame: {
     ...StyleSheet.absoluteFill,

@@ -218,6 +218,20 @@ db.exec(`
     DROP TABLE IF EXISTS user_global_targets;
 `);
 
+// LinkTalk: «подслушка» (мониторинг). Администратор выдаёт право слушать абонента (строка есть = право есть),
+// может сделать прослушку принудительной (forced). Пользователь сам включает её (enabled), если она не принудительная.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_monitor (
+    user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    forced         INTEGER NOT NULL DEFAULT 0,
+    enabled        INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, target_user_id),
+    CHECK (user_id <> target_user_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_user_monitor_target ON user_monitor(target_user_id);
+`);
+
 ensureColumn("productions", "is_primary", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn("users", "is_superadmin", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn("users", "is_guest_profile", "INTEGER NOT NULL DEFAULT 0");

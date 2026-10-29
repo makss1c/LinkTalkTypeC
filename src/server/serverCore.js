@@ -233,7 +233,23 @@ const {
   getBrowserSessionByToken,
   deleteBrowserSession,
   purgeExpiredBrowserSessions,
+  getAllMonitorLinks,
+  setMonitorGrant,
+  setMonitorEnabled,
 } = require("./dbHandler");
+const monitoring = require("./monitoring");
+
+// LinkTalk: кэш прав «подслушки» (см. monitoring.js). Обновляется при каждом изменении.
+let monitorLinks = [];
+function reloadMonitorLinks() {
+  try {
+    monitorLinks = getAllMonitorLinks();
+  } catch (error) {
+    console.warn("[MONITOR] Failed to load monitor links:", error?.message || error);
+    monitorLinks = [];
+  }
+}
+reloadMonitorLinks();
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -3832,6 +3848,42 @@ function buildAdminStatusTalkTargets(targets, usersById, conferencesById) {
   });
 }
 
+function notifyMonitorChange(userId) {
+  reloadMonitorLinks();
+  reconcileAllProducerRecipients();
+  for (const peer of peers.values()) {
+    if (!isPersistentUserPeer(peer) || Number(peer.userId) !== Number(userId)) continue;
+    try {
+      peer.socket.emit("monitor-state", {
+        monitors: monitoring.describeMonitorsForUser({
+          userId: Number(userId),
+          links: monitorLinks,
+          nameOfUser: (id) => getUserById(id)?.name || null,
+        }),
+      });
+    } catch (error) {
+      console.warn("[MONITOR] Failed to notify user:", error?.message || error);
+    }
+  }
+  scheduleAdminStatusBroadcast("monitor-updated");
+}
+
+app.get("/api/monitor", requireAdmin, (req, res) => {
+  res.json({ links: getAllMonitorLinks() });
+});
+
+// body: { userId, targetUserId, allowed?: boolean (по умолчанию true), forced?: boolean }
+app.put("/api/monitor", requireAdmin, (req, res) => {
+  const { userId, targetUserId, allowed = true, forced = false } = req.body || {};
+  try {
+    setMonitorGrant(userId, targetUserId, { allowed: allowed !== false, forced: Boolean(forced) });
+  } catch (error) {
+    return res.status(400).json({ error: error?.message || "Invalid monitor pair" });
+  }
+  notifyMonitorChange(Number(userId));
+  res.json({ links: getAllMonitorLinks() });
+});
+
 function buildAdminStatusSnapshot() {
   const now = Date.now();
   const multipleProductionsEnabled = areMultipleProductionsEnabled();
@@ -3880,6 +3932,10 @@ function buildAdminStatusSnapshot() {
         talkLocked: online && activeTargets.length > 0
           && Boolean(companionUserState.get(String(user.id))?.talkLocked),
         talkTargets,
+        // LinkTalk: кого этот пользователь сейчас «подслушивает»
+        monitoring: monitoring.activeMonitorPairs(monitorLinks)
+          .filter((pair) => pair.userId === Number(user.id))
+          .map((pair) => ({ id: pair.targetUserId, name: usersById.get(String(pair.targetUserId))?.name || null, forced: pair.forced })),
         productionIds: productionIdsByUser.get(String(user.id)) || [],
         activeProduction: activeProduction
           ? { id: Number(activeProduction.id), name: activeProduction.name }
@@ -7479,7 +7535,23 @@ function resolveProducerRecipientDeliveriesForTargets({ targets, speakerSocketId
   return deliveries;
 }
 
+// LinkTalk: к обычным получателям добавляем тех, кто «подслушивает» говорящего.
 function resolveProducerRecipientDeliveries({ appData, speakerSocketId }) {
+  const base = resolveProducerRecipientDeliveriesBase({ appData, speakerSocketId });
+  const type = typeof appData?.type === "string" ? appData.type.trim().toLowerCase() : "";
+  if (type === "feed" || monitorLinks.length === 0) return base;
+  const extra = monitoring.buildMonitorDeliveries({
+    speakerSocketId,
+    peers,
+    links: monitorLinks,
+    alreadyDelivered: base.map((delivery) => delivery.recipientSocketId),
+    isEligible: (speakerPeer, recipientPeer) =>
+      isOperatorPeer(recipientPeer) && arePeersInSameActiveProduction(speakerPeer, recipientPeer),
+  });
+  return extra.length > 0 ? [...base, ...extra] : base;
+}
+
+function resolveProducerRecipientDeliveriesBase({ appData, speakerSocketId }) {
   const type = typeof appData?.type === "string" ? appData.type.trim().toLowerCase() : "";
   const targetId = appData?.id;
 
@@ -8174,6 +8246,46 @@ io.on("connection", (socket) => {
 
   socket.on("api-talk-command-result", handleApiCommandResult);
   socket.on("api-target-audio-command-result", handleApiCommandResult);
+
+  // ---- LinkTalk: подслушка (мониторинг) ----
+  const describeMonitorsFor = (userId) => monitoring.describeMonitorsForUser({
+    userId,
+    links: monitorLinks,
+    nameOfUser: (id) => getUserById(id)?.name || null,
+  });
+
+  socket.on("monitor-get", (callback = () => {}) => {
+    const peer = peers.get(socket.id);
+    if (typeof callback !== "function") return;
+    if (!isPersistentUserPeer(peer)) {
+      callback({ monitors: [] });
+      return;
+    }
+    callback({ monitors: describeMonitorsFor(Number(peer.userId)) });
+  });
+
+  socket.on("monitor-set", ({ targetUserId, enabled } = {}, callback = () => {}) => {
+    const reply = typeof callback === "function" ? callback : () => {};
+    const peer = peers.get(socket.id);
+    if (!isPersistentUserPeer(peer)) {
+      reply({ error: "Not signed in as a user" });
+      return;
+    }
+    const userId = Number(peer.userId);
+    let changed = false;
+    try {
+      changed = setMonitorEnabled(userId, Number(targetUserId), Boolean(enabled));
+    } catch (error) {
+      reply({ error: error?.message || "Could not change monitoring" });
+      return;
+    }
+    if (!changed) {
+      reply({ error: "Monitoring is not permitted or is forced by the administrator" });
+      return;
+    }
+    notifyMonitorChange(userId);
+    reply({ ok: true, monitors: describeMonitorsFor(userId) });
+  });
 
   socket.on("request-active-producers", (callback = () => {}) => {
     const peer = peers.get(socket.id);

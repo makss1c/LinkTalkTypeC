@@ -125,43 +125,60 @@ export function SessionSheet({ onClose }: { onClose: () => void }) {
     onOpenDevice: (id: string) => push({ kind: 'ptt-device', id }),
   };
 
-  const stackView = (
-    <ScreenStack style={stackStyles.stack}>
-      {/* Empty page under Session: swiping Session away lands here and closes the sheet. */}
-      <ScreenStackItem
-        screenId="close"
-        headerConfig={HIDDEN_HEADER}
-        gestureEnabled={false}
-        contentStyle={{ backgroundColor: sheetColor }}
-      >
-        <View />
-      </ScreenStackItem>
-      {path.map((page, index) => (
+  const renderPage = (page: SettingsPage, index: number) => (
+    <SettingsSheet
+      {...pageActions}
+      header={headerForPage(
+        page,
+        store.bleBindings.find((item) => page.kind === 'ptt-device' && item.id === page.id)?.name,
+      )}
+      page={page}
+      onBack={index > 0 ? back : undefined}
+      scrollEnabled={!sliderDragging}
+      onDimSliding={setSliderDragging}
+    />
+  );
+
+  // Android: обычный вид без react-native-screens. Вложенный нативный ScreenStack внутри шторки на
+  // Android не принимал нажатия (пункты меню «не активны»), а простой View с текущей страницей — принимает.
+  const stackView =
+    Platform.OS === 'android' ? (
+      <View style={[stackStyles.stack, { backgroundColor: sheetColor }]}>
+        {path.map((page, index) =>
+          index === path.length - 1 ? (
+            <View key={pageKey(page)} style={stackStyles.stack}>
+              {renderPage(page, index)}
+            </View>
+          ) : null,
+        )}
+      </View>
+    ) : (
+      <ScreenStack style={stackStyles.stack}>
+        {/* Empty page under Session: swiping Session away lands here and closes the sheet. */}
         <ScreenStackItem
-          key={pageKey(page)}
-          screenId={pageKey(page)}
+          screenId="close"
           headerConfig={HIDDEN_HEADER}
-          gestureEnabled
-          // The dim slider drags sideways, so Audio keeps the back swipe on the screen edge only.
-          fullScreenSwipeEnabled={page.kind !== 'audio'}
-          onDismissed={() => dismissedAt(index)}
+          gestureEnabled={false}
           contentStyle={{ backgroundColor: sheetColor }}
         >
-          <SettingsSheet
-            {...pageActions}
-            header={headerForPage(
-              page,
-              store.bleBindings.find((item) => page.kind === 'ptt-device' && item.id === page.id)?.name,
-            )}
-            page={page}
-            onBack={index > 0 ? back : undefined}
-            scrollEnabled={!sliderDragging}
-            onDimSliding={setSliderDragging}
-          />
+          <View />
         </ScreenStackItem>
-      ))}
-    </ScreenStack>
-  );
+        {path.map((page, index) => (
+          <ScreenStackItem
+            key={pageKey(page)}
+            screenId={pageKey(page)}
+            headerConfig={HIDDEN_HEADER}
+            gestureEnabled
+            // The dim slider drags sideways, so Audio keeps the back swipe on the screen edge only.
+            fullScreenSwipeEnabled={page.kind !== 'audio'}
+            onDismissed={() => dismissedAt(index)}
+            contentStyle={{ backgroundColor: sheetColor }}
+          >
+            {renderPage(page, index)}
+          </ScreenStackItem>
+        ))}
+      </ScreenStack>
+    );
 
   // iPad page sheets cannot be dismissed by tapping beside them, so App.tsx presents this one
   // transparently and we draw a centered panel over a backdrop that closes on tap.

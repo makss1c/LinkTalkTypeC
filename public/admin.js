@@ -1595,6 +1595,8 @@ function renderAdminStatus(payload = {}) {
   const showProductionColumn = payload.multipleProductionsEnabled === true;
   containerRestartPanel?.classList.toggle('is-hidden', !canRestartServer);
   latestAdminStatus = payload;
+  // LinkTalk: сообщаем live-панели (admin-live.js) о новом статусе
+  window.dispatchEvent(new CustomEvent('linktalk:status', { detail: payload }));
   syncStatusUserFilters(payload);
   const allStatusUsers = Array.isArray(payload.users) ? payload.users : [];
   const users = filterStatusUsers(allStatusUsers, statusUserFilters);

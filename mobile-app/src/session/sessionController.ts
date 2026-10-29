@@ -322,6 +322,25 @@ export class SessionController {
     });
   }
 
+  /** Загрузить список прослушек (вызывается при открытии меню сессии). */
+  async refreshMonitors(): Promise<void> {
+    const monitors = (await this.signaling?.getMonitors()) ?? [];
+    useSessionStore.setState({ monitors });
+  }
+
+  async setMonitor(targetUserId: number, enabled: boolean): Promise<void> {
+    const signaling = this.signaling;
+    if (!signaling) {
+      return;
+    }
+    try {
+      const monitors = await signaling.setMonitor(targetUserId, enabled);
+      useSessionStore.setState({ monitors });
+    } catch (error) {
+      useSessionStore.setState({ error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
   async selectProduction(production: Production | null): Promise<void> {
     try {
       await this.mediaCoordinator.enterOperator(production);
@@ -915,6 +934,9 @@ export class SessionController {
       },
       onActiveProductionReset: (productionId) => {
         void this.handleActiveProductionReset(productionId);
+      },
+      onMonitorState: (monitors) => {
+        useSessionStore.setState({ monitors });
       },
       onAvailableProductionsUpdated: (productions) => {
         const currentId = useSessionStore.getState().productionId;

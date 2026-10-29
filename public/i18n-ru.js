@@ -1,5 +1,30 @@
 /* LinkTalk: русский перевод веб-клиента и админки. Ключ — английский текст (пробелы сжаты), значение — русский. */
 window.LINKTALK_RU = {
+  "QR Code": "QR-код",
+  "Reset Password": "Сбросить пароль",
+  "Panel": "Панель",
+  "Target Buttons": "Кнопки целей",
+  "Add target": "Добавить цель",
+  "user": "пользователь",
+  "conference": "конференция",
+  "feed": "фид",
+  "membership": "участие",
+  "Use this user as bridge endpoint": "Использовать пользователя как точку моста",
+  "Use this feed as bridge input": "Использовать фид как вход моста",
+  "Participants": "Участники",
+  "Add participant": "Добавить участника",
+  "Server version unknown": "Версия сервера неизвестна",
+  "WebRTC round-trip time from this browser": "Время отклика WebRTC из этого браузера",
+  "WebRTC audio packet loss reported by this browser": "Потери аудиопакетов WebRTC по данным этого браузера",
+  "Now": "Сейчас",
+  "just now": "только что",
+  "ON": "ВКЛ",
+  "OPT": "ВЫБОР",
+  "ALWAYS": "ВСЕГДА",
+  "Live: who talks to whom": "Эфир: кто с кем говорит", "Nobody is talking right now": "Сейчас никто не говорит", "Listening in": "Прослушивают", "Talk history": "История разговоров", "Live talk map": "Карта разговоров",
+  "Monitoring (eavesdrop)": "Подслушка (постоянная прослушка)",
+  "Row user can listen to column user at all times, whoever that person talks to. Click a cell: off, optional (user switches it on), always on.": "Пользователь из строки может слушать пользователя из столбца постоянно, с кем бы тот ни говорил. Нажимайте на ячейку: выкл → по выбору (пользователь включает сам) → всегда.",
+  "Add at least two users to configure monitoring.": "Добавьте минимум двух пользователей, чтобы настроить подслушку.",
   "Confirm action": "Подтвердите действие", "Locked (tap to unlock)": "Зафиксировано (нажмите, чтобы снять)", "No audio": "Нет звука", "No default": "Не задано",
   "About LinkTalk": "О LinkTalk", "Developer": "Разработчик", "Based on": "Основано на",
   "Digital intercom system with a walkie-talkie mode and an intercom panel mode.": "Цифровая система внутренней связи с режимом рации и режимом пульта связи.",
@@ -240,7 +265,20 @@ window.LINKTALK_RU = {
 };
 // Правила для строк с числами и подстановками
 window.LINKTALK_RU_RULES = [
+  [/^Sort by (.+)$/, "Сортировать по: $1"],
+  [/^Open panel for (.+)$/, "Открыть панель: $1"],
+  [/^Stop transmission for (.+)$/, "Остановить передачу: $1"],
+  [/^Open settings for (.+)$/, "Открыть настройки: $1"],
+  [/^Audio settings for (.+)$/, "Настройки звука: $1"],
+  [/^Signaling: online\n?OK\n?Send media: unknown\n?Receive media: unknown(?:\n?(.+))?$/, "Сигнализация: в сети · медиа: нет данных$1"],
   [/^Layer (\d+)\/(\d+)$/, "Слой $1/$2"],
   [/^(\d+) (?:users?)$/, "$1 польз."],
-  [/^Delete (.+)\?$/, "Удалить «$1»?"]
+  [/^Delete (.+)\?$/, "Удалить «$1»?"],
+  [/^(\d+) online of (\d+)$/, "$1 из $2 в сети"],
+  [/^(\d+)s ago$/, "$1 с назад"],
+  [/^(\d+)m ago$/, "$1 мин назад"],
+  [/^(\d+)h ago$/, "$1 ч назад"],
+  [/^(\d+)d ago$/, "$1 дн назад"],
+  [/^(.+) stopped talking$/, "$1 закончил(а) говорить"],
+  [/^👂 (.+) · always$/, "👂 $1 · всегда"]
 ];
