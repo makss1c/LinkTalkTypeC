@@ -45,67 +45,6 @@ export class TalkCoordinator {
     }
   }
 
-  /** Групповой вызов: удерживаем сразу несколько абонентов одной кнопкой. */
-  async pressTalkSet(targets: TalkTarget[]): Promise<void> {
-    const list = targets.filter((target) => this.canTalkTo(target));
-    const media = this.c.media;
-    if (!list.length || !media) {
-      useSessionStore.setState({ error: !media ? 'Media is not ready.' : 'No selected targets are available.' });
-      return;
-    }
-    const generation = this.generation;
-    try {
-      const state = useSessionStore.getState();
-      if (state.talkLocked && this.c.overrideFrom === null && list.some((target) => this.isLocked(target))) {
-        await this.unlockTalk();
-        return;
-      }
-      for (const target of list) this.localHolds.add(talkTargetIdentity(target));
-      await this.c.background.prepareAudioForTalk();
-      if (generation !== this.generation || media !== this.c.media) return;
-      if (this.c.lockedTargets.length && !state.lockMultipleTargets && this.c.overrideFrom === null) {
-        this.c.overrideFrom = this.c.lockedTargets;
-        this.c.talkingTargets = [];
-      }
-      this.c.talkingTargets = list.reduce(addTalkTarget, this.c.talkingTargets);
-      this.publishTalkState(this.c.lockedTargets.length > 0);
-      await media.startTalking(this.c.talkingTargets, this.mediaTalkState().lockActive, () => this.mediaTalkState());
-    } catch (error) {
-      if (generation === this.generation) this.failTalk(error);
-    }
-  }
-
-  async lockTalkSet(targets: TalkTarget[]): Promise<void> {
-    const list = targets.filter((target) => this.canTalkTo(target));
-    const media = this.c.media;
-    if (!list.length || !media) return;
-    const generation = this.generation;
-    await this.c.background.prepareAudioForTalk();
-    if (generation !== this.generation || media !== this.c.media) return;
-    this.c.talkingTargets = list.reduce(addTalkTarget, this.c.talkingTargets);
-    this.c.lockedTargets =
-      useSessionStore.getState().lockMultipleTargets && this.c.lockedTargets.length > 0
-        ? list.reduce(addTalkTarget, this.c.lockedTargets)
-        : this.c.talkingTargets;
-    this.c.overrideFrom = null;
-    this.publishTalkState(true);
-    try {
-      await media.startTalking(this.c.talkingTargets, true, () => this.mediaTalkState());
-      useSessionStore.setState({
-        statusMessage: `Locked to ${this.c.talkingTargets.map((item) => item.label).join(', ')}.`,
-      });
-    } catch (error) {
-      if (generation === this.generation) this.failTalk(error);
-    }
-  }
-
-  async releaseTalkSet(targets: TalkTarget[]): Promise<void> {
-    for (const target of targets) this.localHolds.delete(talkTargetIdentity(target));
-    for (const target of targets) {
-      if (!this.hasHold(target)) await this.finishRelease(target);
-    }
-  }
-
   private async startHold(target: TalkTarget, stillHeld: () => boolean): Promise<void> {
     if (!this.canTalkTo(target)) throw new Error('This target is currently unavailable.');
     const media = this.c.media;

@@ -1291,18 +1291,6 @@ export class SessionController {
     await this.talk.lockTalk(target);
   }
 
-  async pressTalkSet(targets: TalkTarget[]): Promise<void> {
-    await this.talk.pressTalkSet(targets);
-  }
-
-  async lockTalkSet(targets: TalkTarget[]): Promise<void> {
-    await this.talk.lockTalkSet(targets);
-  }
-
-  async releaseTalkSet(targets: TalkTarget[]): Promise<void> {
-    await this.talk.releaseTalkSet(targets);
-  }
-
   async releaseTalk(target?: TalkTarget): Promise<void> {
     await this.talk.releaseTalk(target);
   }
