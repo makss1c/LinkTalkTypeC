@@ -22,7 +22,8 @@ type Props = {
  *
  * Внутри MultiTouchRoot (экран пульта) касания принимает корень и раздаёт кнопкам по координатам —
  * так можно удерживать несколько абонентов разными пальцами одновременно.
- * Вне корня (например, на экране рации) кнопка сама следит за одним пальцем.
+ * Вне корня (например, на экране рации) кнопка сама следит за одним пальцем через сырые события касаний (onTouch*).
+ * Это позволяет не зависеть от системы responder React Native, которая отдаёт касание только одному элементу за раз.
  */
 export function HoldToTalk({
   accessibilityLabel,
@@ -104,6 +105,50 @@ export function HoldToTalk({
       return;
     }
     if (!event.nativeEvent.changedTouches.some((touch) => touchId(touch) === activeTouch.current)) {
+      return;
+    }
+    activeTouch.current = null;
+    if (skipRelease.current || lockedByGesture.current) {
+      return;
+    }
+    onRelease();
+  };
+
+  const touchId = (touch: { identifier?: unknown }): string => String(touch.identifier ?? '0');
+
+  const handleStart = (event: GestureResponderEvent) => {
+    if (disabled || activeTouch.current !== null) {
+      return;
+    }
+    const touch = event.nativeEvent.changedTouches[0];
+    if (!touch) {
+      return;
+    }
+    activeTouch.current = touchId(touch);
+    startX.current = touch.pageX;
+    lockedByGesture.current = false;
+    // Нажатие на зафиксированную кнопку снимает фиксацию: отпускание после него ничего не делает.
+    skipRelease.current = Boolean(locked);
+    onPress();
+  };
+
+  const handleMove = (event: GestureResponderEvent) => {
+    if (disabled || activeTouch.current === null || skipRelease.current || lockedByGesture.current) {
+      return;
+    }
+    const mine = event.nativeEvent.touches.find((touch) => touchId(touch) === activeTouch.current);
+    if (mine && didReachSlideToLockThreshold(mine.pageX, startX.current, leftHanded)) {
+      lockedByGesture.current = true;
+      onLock();
+    }
+  };
+
+  const handleEnd = (event: GestureResponderEvent) => {
+    if (activeTouch.current === null) {
+      return;
+    }
+    const ended = event.nativeEvent.changedTouches.some((touch) => touchId(touch) === activeTouch.current);
+    if (!ended) {
       return;
     }
     activeTouch.current = null;
