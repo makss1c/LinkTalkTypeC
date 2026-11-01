@@ -204,7 +204,11 @@ jobs:
         if: matrix.ffmpeg_source == 'windows-lgpl'
         shell: pwsh
         run: |
-          $binary = Get-Item "bridge-client/src-tauri/target/release/linktalk-bridge-client.exe"
+          $binaryPath = "bridge-client/src-tauri/target/release/talktome-bridge-client.exe"
+          if (-not (Test-Path $binaryPath)) {
+            throw "Bridge executable was not found at '$binaryPath'. Check the Tauri/Rust build output and Cargo package name."
+          }
+          $binary = Get-Item $binaryPath
           $actualVersion = $binary.VersionInfo.ProductVersion
           if (-not $actualVersion.StartsWith($env:APP_VERSION)) {
             throw "Expected Bridge version $env:APP_VERSION, found $actualVersion"
