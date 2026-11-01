@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 
+// Прежние TALKTOME_* переменные окружения работают как LINKTALK_* (если новые не заданы).
+for (const key of Object.keys(process.env)) {
+  if (key.startsWith("TALKTOME_") && process.env[`LINKTALK_${key.slice(9)}`] === undefined) {
+    process.env[`LINKTALK_${key.slice(9)}`] = process.env[key];
+  }
+}
+
 const { spawn } = require("child_process");
 const fs = require("fs");
 const os = require("os");
@@ -7,7 +14,7 @@ const path = require("path");
 const readline = require("readline");
 const { io } = require("socket.io-client");
 
-const radioConfigPath = path.resolve(process.env.TALKTOME_RADIO_CONFIG || "gateway/radio-config.json");
+const radioConfigPath = path.resolve(process.env.LINKTALK_RADIO_CONFIG || "gateway/radio-config.json");
 const radioConfig = loadRadioConfig(radioConfigPath);
 
 function loadRadioConfig(filePath) {
@@ -49,36 +56,36 @@ function getDefaultTxRtpIp() {
 }
 
 const config = {
-  gpio: stringSetting("TALKTOME_RADIO_GPIO", "gpio", "17"),
-  audioDevice: stringSetting("TALKTOME_RADIO_AUDIO_DEVICE", "audioDevice", "plughw:CARD=CODEC,DEV=0"),
-  sampleRate: numberSetting("TALKTOME_RADIO_SAMPLE_RATE", "sampleRate", 48000),
-  channels: numberSetting("TALKTOME_RADIO_CHANNELS", "channels", 1),
-  pttLeadMs: numberSetting("TALKTOME_RADIO_PTT_LEAD_MS", "pttLeadMs", 300),
-  pttTailMs: numberSetting("TALKTOME_RADIO_PTT_TAIL_MS", "pttTailMs", 250),
-  rxOnThreshold: numberSetting("TALKTOME_RADIO_RX_ON_THRESHOLD", "rxOnThreshold", 0.002),
-  rxOffThreshold: numberSetting("TALKTOME_RADIO_RX_OFF_THRESHOLD", "rxOffThreshold", 0.003),
-  rxHangMs: numberSetting("TALKTOME_RADIO_RX_HANG_MS", "rxHangMs", 600),
-  rxPreRollMs: numberSetting("TALKTOME_RADIO_RX_PRE_ROLL_MS", "rxPreRollMs", 500),
-  rxResumeLeadMs: numberSetting("TALKTOME_RADIO_RX_RESUME_LEAD_MS", "rxResumeLeadMs", 150),
-  rxWarmupMs: numberSetting("TALKTOME_RADIO_RX_WARMUP_MS", "rxWarmupMs", 500),
-  rxGainDb: numberSetting("TALKTOME_RADIO_RX_GAIN_DB", "rxGainDb", 6),
-  txEnabled: booleanSetting("TALKTOME_RADIO_TX_ENABLED", "txEnabled", true),
-  txRtpIp: stringSetting("TALKTOME_RADIO_TX_RTP_IP", "txRtpIp", getDefaultTxRtpIp()),
-  txRtpPort: numberSetting("TALKTOME_RADIO_TX_RTP_PORT", "txRtpPort", 5006),
-  txGainDb: numberSetting("TALKTOME_RADIO_TX_GAIN_DB", "txGainDb", 0),
-  txReleaseHoldMs: numberSetting("TALKTOME_RADIO_TX_RELEASE_HOLD_MS", "txReleaseHoldMs", 900),
-  txStopGraceMs: numberSetting("TALKTOME_RADIO_TX_STOP_GRACE_MS", "txStopGraceMs", 150),
-  txRxMuteTailMs: numberSetting("TALKTOME_RADIO_TX_RX_MUTE_TAIL_MS", "txRxMuteTailMs", 600),
-  rxSegmentsDir: stringSetting("TALKTOME_RADIO_RX_SEGMENTS_DIR", "rxSegmentsDir", "gateway/rx-segments"),
-  talkToMeUrl: stringSetting("TALKTOME_SERVER_URL", "talkToMeUrl", "https://localhost:8443"),
+  gpio: stringSetting("LINKTALK_RADIO_GPIO", "gpio", "17"),
+  audioDevice: stringSetting("LINKTALK_RADIO_AUDIO_DEVICE", "audioDevice", "plughw:CARD=CODEC,DEV=0"),
+  sampleRate: numberSetting("LINKTALK_RADIO_SAMPLE_RATE", "sampleRate", 48000),
+  channels: numberSetting("LINKTALK_RADIO_CHANNELS", "channels", 1),
+  pttLeadMs: numberSetting("LINKTALK_RADIO_PTT_LEAD_MS", "pttLeadMs", 300),
+  pttTailMs: numberSetting("LINKTALK_RADIO_PTT_TAIL_MS", "pttTailMs", 250),
+  rxOnThreshold: numberSetting("LINKTALK_RADIO_RX_ON_THRESHOLD", "rxOnThreshold", 0.002),
+  rxOffThreshold: numberSetting("LINKTALK_RADIO_RX_OFF_THRESHOLD", "rxOffThreshold", 0.003),
+  rxHangMs: numberSetting("LINKTALK_RADIO_RX_HANG_MS", "rxHangMs", 600),
+  rxPreRollMs: numberSetting("LINKTALK_RADIO_RX_PRE_ROLL_MS", "rxPreRollMs", 500),
+  rxResumeLeadMs: numberSetting("LINKTALK_RADIO_RX_RESUME_LEAD_MS", "rxResumeLeadMs", 150),
+  rxWarmupMs: numberSetting("LINKTALK_RADIO_RX_WARMUP_MS", "rxWarmupMs", 500),
+  rxGainDb: numberSetting("LINKTALK_RADIO_RX_GAIN_DB", "rxGainDb", 6),
+  txEnabled: booleanSetting("LINKTALK_RADIO_TX_ENABLED", "txEnabled", true),
+  txRtpIp: stringSetting("LINKTALK_RADIO_TX_RTP_IP", "txRtpIp", getDefaultTxRtpIp()),
+  txRtpPort: numberSetting("LINKTALK_RADIO_TX_RTP_PORT", "txRtpPort", 5006),
+  txGainDb: numberSetting("LINKTALK_RADIO_TX_GAIN_DB", "txGainDb", 0),
+  txReleaseHoldMs: numberSetting("LINKTALK_RADIO_TX_RELEASE_HOLD_MS", "txReleaseHoldMs", 900),
+  txStopGraceMs: numberSetting("LINKTALK_RADIO_TX_STOP_GRACE_MS", "txStopGraceMs", 150),
+  txRxMuteTailMs: numberSetting("LINKTALK_RADIO_TX_RX_MUTE_TAIL_MS", "txRxMuteTailMs", 600),
+  rxSegmentsDir: stringSetting("LINKTALK_RADIO_RX_SEGMENTS_DIR", "rxSegmentsDir", "gateway/rx-segments"),
+  talkToMeUrl: stringSetting("LINKTALK_SERVER_URL", "talkToMeUrl", "https://localhost:8443"),
   gatewayApiKey: stringSetting(
-    "TALKTOME_GATEWAY_API_KEY",
+    "LINKTALK_GATEWAY_API_KEY",
     "gatewayApiKey",
     process.env.COMPANION_API_KEY || ""
   ),
-  gatewayUserId: stringSetting("TALKTOME_GATEWAY_USER_ID", "gatewayUserId", ""),
-  gatewayConferenceId: stringSetting("TALKTOME_GATEWAY_CONFERENCE_ID", "gatewayConferenceId", ""),
-  gatewayName: stringSetting("TALKTOME_GATEWAY_NAME", "gatewayName", "Baofeng Gateway"),
+  gatewayUserId: stringSetting("LINKTALK_GATEWAY_USER_ID", "gatewayUserId", ""),
+  gatewayConferenceId: stringSetting("LINKTALK_GATEWAY_CONFERENCE_ID", "gatewayConferenceId", ""),
+  gatewayName: stringSetting("LINKTALK_GATEWAY_NAME", "gatewayName", "Baofeng Gateway"),
 };
 
 function delay(ms) {
@@ -302,7 +309,7 @@ function buildGatewayProducerRtpParameters({ payloadType, ssrc }) {
     ],
     encodings: [{ ssrc }],
     rtcp: {
-      cname: "talktome-radio-gateway",
+      cname: "linktalk-radio-gateway",
       reducedSize: true,
       mux: true,
     },
@@ -326,7 +333,7 @@ function buildReceiveSdp({ port, rtpParameters }) {
   return [
     "v=0",
     "o=- 0 0 IN IP4 127.0.0.1",
-    "s=Talktome Radio Gateway TX",
+    "s=LinkTalk Radio Gateway TX",
     "c=IN IP4 0.0.0.0",
     "t=0 0",
     `m=audio ${port} RTP/AVP ${payloadType}`,
@@ -580,7 +587,7 @@ function startTalkToRadioTx(socket, options = {}) {
     }
     await emitWithAck(socket, "resume-consumer", { consumerId: consumer.id });
     session.starting = false;
-    console.log(`[radio-gateway] transmitting Talktome producer ${producerId} to radio`);
+    console.log(`[radio-gateway] transmitting LinkTalk producer ${producerId} to radio`);
   }
 
   socket.on("new-producer", (payload) => {
@@ -659,17 +666,17 @@ function startTalkToRadioTx(socket, options = {}) {
 async function runRxStreamSession() {
   const userId = Number(config.gatewayUserId);
   if (!Number.isFinite(userId) || userId <= 0) {
-    throw new Error("Set TALKTOME_GATEWAY_USER_ID to the Talktome user id for this radio gateway.");
+    throw new Error("Set LINKTALK_GATEWAY_USER_ID to the Talktome user id for this radio gateway.");
   }
 
   const conferenceId = Number(config.gatewayConferenceId);
   if (!Number.isFinite(conferenceId) || conferenceId <= 0) {
-    throw new Error("Set TALKTOME_GATEWAY_CONFERENCE_ID to the Talktome conference id this radio should talk into.");
+    throw new Error("Set LINKTALK_GATEWAY_CONFERENCE_ID to the Talktome conference id this radio should talk into.");
   }
 
   const socket = createSocket();
   socket.on("disconnect", (reason) => {
-    console.warn(`[radio-gateway] Talktome socket disconnected: ${reason}`);
+    console.warn(`[radio-gateway] LinkTalk socket disconnected: ${reason}`);
   });
 
   await waitForSocketConnect(socket);
@@ -1220,7 +1227,7 @@ function writeRadioConfig(settings, measurements) {
 }
 
 async function calibrateRx() {
-  console.log("Talktome Radio RX Kalibrierung");
+  console.log("LinkTalk Radio RX Kalibrierung");
   console.log(`Audio device: ${config.audioDevice}`);
   console.log(`Config file: ${radioConfigPath}`);
 
@@ -1248,11 +1255,11 @@ async function calibrateRx() {
   };
 
   console.log("\nVorschlag:");
-  console.log(`TALKTOME_RADIO_RX_ON_THRESHOLD=${formatLevel(settings.rxOnThreshold)}`);
-  console.log(`TALKTOME_RADIO_RX_OFF_THRESHOLD=${formatLevel(settings.rxOffThreshold)}`);
-  console.log(`TALKTOME_RADIO_RX_HANG_MS=${settings.rxHangMs}`);
-  console.log(`TALKTOME_RADIO_RX_RESUME_LEAD_MS=${settings.rxResumeLeadMs}`);
-  console.log(`TALKTOME_RADIO_RX_GAIN_DB=${settings.rxGainDb}`);
+  console.log(`LINKTALK_RADIO_RX_ON_THRESHOLD=${formatLevel(settings.rxOnThreshold)}`);
+  console.log(`LINKTALK_RADIO_RX_OFF_THRESHOLD=${formatLevel(settings.rxOffThreshold)}`);
+  console.log(`LINKTALK_RADIO_RX_HANG_MS=${settings.rxHangMs}`);
+  console.log(`LINKTALK_RADIO_RX_RESUME_LEAD_MS=${settings.rxResumeLeadMs}`);
+  console.log(`LINKTALK_RADIO_RX_GAIN_DB=${settings.rxGainDb}`);
 
   const answer = await promptLine(`\nIn ${radioConfigPath} speichern? [Y/n] `);
   if (answer && !["y", "yes", "j", "ja"].includes(answer.toLowerCase())) {
@@ -1281,25 +1288,25 @@ function printUsage() {
   node gateway/radioGateway.js stream
 
 Environment:
-  TALKTOME_RADIO_CONFIG=gateway/radio-config.json
-  TALKTOME_RADIO_GPIO=17
-  TALKTOME_RADIO_AUDIO_DEVICE=plughw:CARD=CODEC,DEV=0
-  TALKTOME_RADIO_RX_ON_THRESHOLD=0.002
-  TALKTOME_RADIO_RX_OFF_THRESHOLD=0.003
-  TALKTOME_RADIO_RX_HANG_MS=600
-  TALKTOME_RADIO_RX_PRE_ROLL_MS=500
-  TALKTOME_RADIO_RX_RESUME_LEAD_MS=150
-  TALKTOME_RADIO_RX_WARMUP_MS=500
-  TALKTOME_RADIO_RX_GAIN_DB=6
-  TALKTOME_RADIO_TX_ENABLED=true
-  TALKTOME_RADIO_TX_RTP_IP=<auto-detected-pi-ip>
-  TALKTOME_RADIO_TX_RTP_PORT=5006
-  TALKTOME_RADIO_TX_GAIN_DB=0
-  TALKTOME_RADIO_RX_SEGMENTS_DIR=gateway/rx-segments
-  TALKTOME_SERVER_URL=https://talktome.local:8443
-  TALKTOME_GATEWAY_USER_ID=1
-  TALKTOME_GATEWAY_CONFERENCE_ID=1
-  TALKTOME_GATEWAY_NAME=Baofeng Gateway`);
+  LINKTALK_RADIO_CONFIG=gateway/radio-config.json
+  LINKTALK_RADIO_GPIO=17
+  LINKTALK_RADIO_AUDIO_DEVICE=plughw:CARD=CODEC,DEV=0
+  LINKTALK_RADIO_RX_ON_THRESHOLD=0.002
+  LINKTALK_RADIO_RX_OFF_THRESHOLD=0.003
+  LINKTALK_RADIO_RX_HANG_MS=600
+  LINKTALK_RADIO_RX_PRE_ROLL_MS=500
+  LINKTALK_RADIO_RX_RESUME_LEAD_MS=150
+  LINKTALK_RADIO_RX_WARMUP_MS=500
+  LINKTALK_RADIO_RX_GAIN_DB=6
+  LINKTALK_RADIO_TX_ENABLED=true
+  LINKTALK_RADIO_TX_RTP_IP=<auto-detected-pi-ip>
+  LINKTALK_RADIO_TX_RTP_PORT=5006
+  LINKTALK_RADIO_TX_GAIN_DB=0
+  LINKTALK_RADIO_RX_SEGMENTS_DIR=gateway/rx-segments
+  LINKTALK_SERVER_URL=https://talktome.local:8443
+  LINKTALK_GATEWAY_USER_ID=1
+  LINKTALK_GATEWAY_CONFERENCE_ID=1
+  LINKTALK_GATEWAY_NAME=Baofeng Gateway`);
 }
 
 async function main() {

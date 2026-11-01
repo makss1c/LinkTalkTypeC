@@ -378,7 +378,7 @@ const collapsibleAdminSections = {
   },
 };
 
-const ADMIN_SECTION_COLLAPSED_STORAGE_PREFIX = 'talktome:admin-section-collapsed:';
+const ADMIN_SECTION_COLLAPSED_STORAGE_PREFIX = 'linktalk:admin-section-collapsed:';
 
 let currentAdminImageLightboxState = null;
 let currentBridgeRegistry = [];
@@ -5349,7 +5349,7 @@ const userAudioSettingsSave = document.getElementById('user-audio-settings-save'
 let editingAudioSettingsUserId = null;
 
 function renderUserAudioSettingsFields(settings, targets = []) {
-  const settingsApi = window.TalktomeUserAudioSettings;
+  const settingsApi = window.LinkTalkUserAudioSettings;
   const checked = (key) => settings[key] ? 'checked' : '';
   const options = (values, selected, label) => values.map((value) => (
     `<option value="${escapeHtml(value)}" ${String(value) === String(selected) ? 'selected' : ''}>${escapeHtml(label(value))}</option>`
@@ -5413,7 +5413,7 @@ function closeUserAudioSettings() {
 userAudioSettingsForm?.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!editingAudioSettingsUserId) return;
-  const settings = window.TalktomeUserAudioSettings.normalize({
+  const settings = window.LinkTalkUserAudioSettings.normalize({
     audioProfile: document.getElementById('admin-audio-profile').value,
     dimAmountDb: Number(document.getElementById('admin-dim-amount').value),
     dimFeedsWhileSpeaking: document.getElementById('admin-dim-speaking').checked,

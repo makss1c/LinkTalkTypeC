@@ -1,7 +1,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  if (root) root.TalktomeRemotePanelState = api;
+  if (root) root.LinkTalkRemotePanelState = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   const DEVICE_KEYS = ['preferredAudioInputDeviceId', 'preferredAudioInputDeviceExplicit', 'preferredAudioOutputDeviceId'];
   function isPreferenceKey(key, userId) {

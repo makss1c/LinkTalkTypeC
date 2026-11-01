@@ -1,6 +1,6 @@
 import { fingerprintsEqual, isSha256Fingerprint, normalizeFingerprint } from './fingerprint';
 
-const KEY = 'talktome.tls-pins';
+const KEY = 'linktalk.tls-pins';
 
 export type TlsPin = {
   hostname: string;

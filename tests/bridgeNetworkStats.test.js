@@ -1,9 +1,10 @@
 const assert = require('node:assert/strict');
+const { readServerSource, nsFromContext } = require('./helpers/serverSource');
 const fs = require('node:fs');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const server = fs.readFileSync('src/server/serverCore.js', 'utf8');
+const server = readServerSource();
 const start = server.indexOf('function isFreshBridgeNetworkMetric(');
 const end = server.indexOf('function buildAdminStatusTalkTargets(', start);
 const bridgeControlSessions = new Map();

@@ -12,7 +12,7 @@ function verifyBuildNode(actualVersion = process.versions.node) {
 
   if (!supported) {
     throw new Error(
-      `Talktome standalone builds require Node >=${requiredVersion} <${requiredMajor + 1}; current runtime is ${actualVersion}`
+      `LinkTalk standalone builds require Node >=${requiredVersion} <${requiredMajor + 1}; current runtime is ${actualVersion}`
     );
   }
 }

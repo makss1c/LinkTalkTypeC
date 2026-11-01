@@ -1,7 +1,7 @@
 (function initBridgeAudioLevels(root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  if (root) root.TalktomeBridgeAudioLevels = api;
+  if (root) root.LinkTalkBridgeAudioLevels = api;
 }(typeof globalThis !== 'undefined' ? globalThis : this, function createBridgeAudioLevels() {
   const LIMITS = Object.freeze({ input: [-40, 40], output: [-40, 40] });
   function normalizeLevel(value, direction, { strict = false } = {}) {

@@ -1,7 +1,7 @@
 (function initAudioMeter(root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  if (root) root.TalktomeAudioMeter = api;
+  if (root) root.LinkTalkAudioMeter = api;
 }(typeof globalThis !== 'undefined' ? globalThis : this, function createAudioMeterApi() {
   const COLORS = Object.freeze({ green: '#22c55e', yellow: '#facc15', red: '#ef4444' });
   function renderLevel(fill, percent, minDb = -60, vertical = false) {

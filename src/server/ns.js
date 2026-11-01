@@ -1,0 +1,35 @@
+/**
+ * Реестр секций сервера. Каждая секция при загрузке дополняет свой объект своими экспортами;
+ * обращения к более поздним секциям идут через ns.<секция>.<имя> во время вызова.
+ */
+module.exports = {
+  runtime: {},
+  monitorCache: {},
+  base: {},
+  config: {},
+  staticAssets: {},
+  sessions: {},
+  companionAuth: {},
+  bridgeRegistry: {},
+  talkTargets: {},
+  companionState: {},
+  listenConfig: {},
+  routesUsers: {},
+  routesLogin: {},
+  routesAdmin: {},
+  adminStatus: {},
+  adminSettings: {},
+  routesAdminUsers: {},
+  routesCompanion: {},
+  routesBridge: {},
+  routesCompanionCommands: {},
+  routesEntities: {},
+  entityNotifications: {},
+  webServer: {},
+  networkUtils: {},
+  bridgeControl: {},
+  mediaInit: {},
+  producerRouting: {},
+  socketHandlers: {},
+  startup: {},
+};

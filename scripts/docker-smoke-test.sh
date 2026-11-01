@@ -2,9 +2,9 @@
 
 set -euo pipefail
 
-image="${1:-talktome:smoke-test}"
+image="${1:-linktalk:smoke-test}"
 expected_version="${2:-}"
-container_name="talktome-smoke-${RANDOM}-$$"
+container_name="linktalk-smoke-${RANDOM}-$$"
 
 expected_node_version="$(cat "$(dirname "$0")/../.node-version")"
 actual_node_version="$(docker run --rm "$image" node server.js --node-version)"
@@ -19,7 +19,7 @@ if [[ -n "$expected_version" ]]; then
     echo "Expected Docker server version $expected_version, found $actual_version." >&2
     exit 1
   fi
-  overridden_version="$(docker run --rm --env TALKTOME_VERSION=0.0.0-stale "$image" node server.js --version)"
+  overridden_version="$(docker run --rm --env LINKTALK_VERSION=0.0.0-stale "$image" node server.js --version)"
   if [[ "$overridden_version" != "$expected_version" ]]; then
     echo "Runtime override changed Docker server version to $overridden_version (expected $expected_version)." >&2
     exit 1
@@ -36,8 +36,8 @@ docker run \
   --name "$container_name" \
   --env PUBLIC_IP=127.0.0.1 \
   --env HTTP_PORT=off \
-  --env TALKTOME_RTC_PORT_START=45000 \
-  --env TALKTOME_RTC_PORT_COUNT=32 \
+  --env LINKTALK_RTC_PORT_START=45000 \
+  --env LINKTALK_RTC_PORT_COUNT=32 \
   --health-interval=1s \
   --health-timeout=5s \
   --health-start-period=1s \

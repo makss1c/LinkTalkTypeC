@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { readServerSource, nsFromContext, createServerContext } = require('./helpers/serverSource');
 const test = require('node:test');
 const { canUserRearrangeTargets, validateCompleteTargetOrder } = require('../src/server/targetOrdering');
 const fs = require('node:fs');
@@ -16,14 +17,14 @@ test('target rearrange inherits the default until explicitly overridden per user
 });
 
 test('client order endpoint rejects a disabled user before changing target order', () => {
-  const source = fs.readFileSync(require.resolve('../src/server/serverCore'), 'utf8');
+  const source = readServerSource();
   const start = source.indexOf("app.put('/api/v1/client/targets/order'");
   const end = source.indexOf('app.get(\'/users/:id/productions\'', start);
   let handler;
   let saved = false;
   let defaults = { allowTargetRearrange: false };
   const user = { id: 1, allow_target_rearrange: null };
-  const context = vm.createContext({
+  const context = createServerContext({
     app: { put: (route, callback) => { handler = callback; } },
     getBrowserSession: () => ({ session: { kind: 'user', userId: 1 } }),
     getUserById: () => user,

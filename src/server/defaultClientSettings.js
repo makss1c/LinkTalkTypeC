@@ -62,7 +62,7 @@ function serializeDefaultClientSettingsScript(value) {
     .replace(/</g, "\\u003c")
     .replace(/\u2028/g, "\\u2028")
     .replace(/\u2029/g, "\\u2029");
-  return `window.TALKTOME_DEFAULT_CLIENT_SETTINGS = ${json};\n`;
+  return `window.LINKTALK_DEFAULT_CLIENT_SETTINGS = ${json};\n`;
 }
 
 module.exports = {

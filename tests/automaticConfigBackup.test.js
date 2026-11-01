@@ -19,7 +19,7 @@ test('automatic backup writes the export bundle privately and schedules from the
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const directory = path.join(root, 'backups');
   const settings = { enabled: true, intervalDays: 1 };
-  const bundle = { format: 'talktome-config', version: 1, database: { users: [] } };
+  const bundle = { format: 'linktalk-config', version: 1, database: { users: [] } };
   const manager = createAutomaticConfigBackup({
     directory,
     getSettings: () => settings,

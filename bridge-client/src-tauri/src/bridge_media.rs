@@ -30,7 +30,9 @@ const DECODER_STARTUP_GRACE_MS: u64 = 10;
 const OUTPUT_HANDSHAKE_ATTEMPTS: usize = 3;
 const OUTPUT_HANDSHAKE_INTERVAL_MS: u64 = 15;
 const OUTPUT_HANDSHAKE_SSRC: u32 = 0x5441_4c4b;
-const FFMPEG_ENV_VAR: &str = "TALKTOME_FFMPEG";
+const FFMPEG_ENV_VAR: &str = "LINKTALK_FFMPEG";
+/// Прежнее имя переменной: продолжает работать, если новая не задана.
+const LEGACY_FFMPEG_ENV_VAR: &str = "TALKTOME_FFMPEG";
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
@@ -72,7 +74,7 @@ fn configure_ffmpeg_command(command: &mut Command) {
 fn configure_ffmpeg_command(_command: &mut Command) {}
 
 fn resolve_ffmpeg_path() -> Option<PathBuf> {
-    if let Ok(path) = std::env::var(FFMPEG_ENV_VAR) {
+    if let Ok(path) = std::env::var(FFMPEG_ENV_VAR).or_else(|_| std::env::var(LEGACY_FFMPEG_ENV_VAR)) {
         let path = PathBuf::from(path);
         if path.is_file() {
             return Some(path);

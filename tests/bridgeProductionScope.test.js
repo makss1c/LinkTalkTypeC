@@ -1,4 +1,5 @@
 const PROJECT_ROOT = require('./helpers/projectRoot');
+const { readServerSource, nsFromContext } = require('./helpers/serverSource');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -18,7 +19,7 @@ test('admin and bridge keep user and feed endpoints production-free', () => {
 });
 
 test('bridge sessions are global and conferences cross production boundaries', () => {
-  const serverSource = read('src/server/serverCore.js');
+  const serverSource = readServerSource();
 
   assert.match(serverSource, /getBridgeTargetsForUser\(userId\)/);
   assert.match(serverSource, /productionId: null/);
@@ -26,7 +27,7 @@ test('bridge sessions are global and conferences cross production boundaries', (
 });
 
 test('server delegates login production fallback to the tested selection policy', () => {
-  const serverSource = read('src/server/serverCore.js');
+  const serverSource = readServerSource();
 
   assert.match(serverSource, /resolveActiveProductionSelection\(\{/);
   assert.match(serverSource, /memberships,/);

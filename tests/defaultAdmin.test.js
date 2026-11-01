@@ -23,7 +23,7 @@ test('creates the initial admin with the documented temporary password', () => {
   try {
     execFileSync(process.execPath, ['-e', script], {
       cwd: PROJECT_ROOT,
-      env: { ...process.env, TALKTOME_DATA_DIR: dataDir },
+      env: { ...process.env, LINKTALK_DATA_DIR: dataDir },
       stdio: 'pipe',
     });
   } finally {

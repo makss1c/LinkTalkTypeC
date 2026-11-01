@@ -7,7 +7,7 @@ import {
   type ServerClientDefaults,
 } from '../protocol/clientDefaults';
 
-const KEY = 'talktome.operator-audio';
+const KEY = 'linktalk.operator-audio';
 
 export const FEED_DIM_DB_OPTIONS = DIM_AMOUNT_DB_OPTIONS;
 export const DEFAULT_FEED_DIM_DB = DEFAULT_DIM_AMOUNT_DB;

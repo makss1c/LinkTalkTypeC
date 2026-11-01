@@ -8,7 +8,7 @@ import {
 } from './bindings';
 import { DEFAULT_BLE_TARGET, parseBleTargetSelection, type BleTargetSelection } from './target';
 
-const KEY = 'talktome.ble-button';
+const KEY = 'linktalk.ble-button';
 
 export type BlePreferences = {
   shortPressLocksTalk: boolean;

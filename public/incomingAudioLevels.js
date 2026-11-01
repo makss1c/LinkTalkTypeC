@@ -1,7 +1,7 @@
 (function initIncomingAudioLevels(root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  if (root) root.TalktomeIncomingAudioLevels = api;
+  if (root) root.LinkTalkIncomingAudioLevels = api;
 }(typeof globalThis !== 'undefined' ? globalThis : this, function createIncomingAudioLevelsApi() {
   const MIN_DB = -90;
 

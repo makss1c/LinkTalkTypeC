@@ -18,19 +18,19 @@ function parseTrustedProxies(value) {
 }
 
 function loadProxySsoConfig(environment = process.env) {
-  const enabled = parseEnabled(environment.TALKTOME_SSO_ENABLED);
+  const enabled = parseEnabled(environment.LINKTALK_SSO_ENABLED);
   const configuredHeader = String(
-    environment.TALKTOME_SSO_HEADER || DEFAULT_SSO_HEADER
+    environment.LINKTALK_SSO_HEADER || DEFAULT_SSO_HEADER
   ).trim();
   if (!HEADER_NAME_PATTERN.test(configuredHeader)) {
-    throw new Error(`Invalid TALKTOME_SSO_HEADER: ${configuredHeader || "(empty)"}`);
+    throw new Error(`Invalid LINKTALK_SSO_HEADER: ${configuredHeader || "(empty)"}`);
   }
 
   const header = configuredHeader.toLowerCase();
-  const trustedProxies = parseTrustedProxies(environment.TALKTOME_SSO_TRUSTED_PROXIES);
+  const trustedProxies = parseTrustedProxies(environment.LINKTALK_SSO_TRUSTED_PROXIES);
   if (enabled && trustedProxies.length === 0) {
     throw new Error(
-      "TALKTOME_SSO_TRUSTED_PROXIES is required when trusted-header SSO is enabled"
+      "LINKTALK_SSO_TRUSTED_PROXIES is required when trusted-header SSO is enabled"
     );
   }
 
@@ -39,7 +39,7 @@ function loadProxySsoConfig(environment = process.env) {
     try {
       trustProxy = proxyaddr.compile(trustedProxies);
     } catch (error) {
-      throw new Error(`Invalid TALKTOME_SSO_TRUSTED_PROXIES: ${error.message}`);
+      throw new Error(`Invalid LINKTALK_SSO_TRUSTED_PROXIES: ${error.message}`);
     }
   }
 

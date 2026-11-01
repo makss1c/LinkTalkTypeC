@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { normalizeAudioPreference, type TargetAudioPreference } from '../protocol/audioPreference';
 
-const KEY = 'talktome.target-audio-preferences';
+const KEY = 'linktalk.target-audio-preferences';
 
 export async function loadAudioPreferences(): Promise<Record<string, TargetAudioPreference>> {
   const raw = await AsyncStorage.getItem(KEY);

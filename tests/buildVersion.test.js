@@ -83,8 +83,8 @@ test("reads all version data from Git", () => {
 test("reuses a workflow version without consulting mutable Git refs", () => {
   const info = resolveBuildVersion({
     environment: {
-      TALKTOME_BUILD_VERSION: "1.2.5-dev.1",
-      TALKTOME_BUILD_SAFE_VERSION: "v1.2.5-dev.1-1234abcd",
+      LINKTALK_BUILD_VERSION: "1.2.5-dev.1",
+      LINKTALK_BUILD_SAFE_VERSION: "v1.2.5-dev.1-1234abcd",
       GITHUB_SHA: "1234abcd5678",
     },
     runGit() {
@@ -100,7 +100,7 @@ test("reuses a workflow version without consulting mutable Git refs", () => {
 
 test("rejects an invalid propagated workflow version", () => {
   assert.throws(
-    () => resolveBuildVersion({ environment: { TALKTOME_BUILD_VERSION: "latest" } }),
+    () => resolveBuildVersion({ environment: { LINKTALK_BUILD_VERSION: "latest" } }),
     /Invalid LinkTalk version tag/,
   );
 });

@@ -242,7 +242,7 @@ fn load_runtime_library() -> Result<(Library, String), String> {
         }
     }
     Err(format!(
-        "Bundled OMT backend not found. Reinstall the Bridge or set TALKTOME_OMT_RUNTIME. Tried: {}",
+        "Bundled OMT backend not found. Reinstall the Bridge or set LINKTALK_OMT_RUNTIME. Tried: {}",
         errors.join("; ")
     ))
 }
@@ -250,7 +250,7 @@ fn load_runtime_library() -> Result<(Library, String), String> {
 fn runtime_candidates() -> Vec<PathBuf> {
     let names = runtime_library_names();
     let mut candidates = Vec::new();
-    if let Some(path) = std::env::var_os("TALKTOME_OMT_RUNTIME") {
+    if let Some(path) = std::env::var_os("LINKTALK_OMT_RUNTIME").or_else(|| std::env::var_os("TALKTOME_OMT_RUNTIME")) {
         push_runtime_path(&mut candidates, PathBuf::from(path), names);
     }
     if let Ok(executable) = std::env::current_exe() {
@@ -993,11 +993,11 @@ pub(crate) mod tests {
     fn omt_external_audio_probe() {
         use std::sync::mpsc::RecvTimeoutError;
 
-        let Ok(expected_name) = std::env::var("TALKTOME_OMT_TEST_SOURCE") else {
+        let Ok(expected_name) = std::env::var("LINKTALK_OMT_TEST_SOURCE") else {
             return;
         };
         let require_signal =
-            std::env::var("TALKTOME_OMT_TEST_REQUIRE_SIGNAL").is_ok_and(|value| value == "1");
+            std::env::var("LINKTALK_OMT_TEST_REQUIRE_SIGNAL").is_ok_and(|value| value == "1");
         let api = load_api().expect("OMT backend is unavailable in external probe");
         let deadline = Instant::now() + Duration::from_secs(8);
         let source = loop {
@@ -1053,9 +1053,9 @@ pub(crate) mod tests {
                 "omt::tests::omt_external_audio_probe",
                 "--nocapture",
             ])
-            .env("TALKTOME_OMT_TEST_SOURCE", source_name)
+            .env("LINKTALK_OMT_TEST_SOURCE", source_name)
             .env(
-                "TALKTOME_OMT_TEST_REQUIRE_SIGNAL",
+                "LINKTALK_OMT_TEST_REQUIRE_SIGNAL",
                 if require_signal { "1" } else { "0" },
             )
             .output()

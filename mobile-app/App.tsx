@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 import { useAppMode } from './src/app/appMode';
+import { migrateLegacyStorage } from './src/storage/migrateLegacyKeys';
 import { useLang } from './src/i18n';
 import { session, useSessionStore } from './src/session/store';
 import {
@@ -151,7 +152,8 @@ export default function App() {
 
   useEffect(() => {
     void useLang.getState().hydrate();
-    void session.hydrate();
+    // Сначала переносим данные со старых ключей talktome.*, потом читаем сессию.
+    void migrateLegacyStorage().finally(() => session.hydrate());
     void useAppMode.getState().hydrate();
   }, []);
 

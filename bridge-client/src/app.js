@@ -24,6 +24,9 @@ const omtRuntime = document.getElementById("omt-runtime");
 const omtRuntimeDetail = document.getElementById("omt-runtime-detail");
 const refreshOmtButton = document.getElementById("refresh-omt");
 const omtRuntimeLink = document.getElementById("omt-runtime-link");
+const aes67Runtime = document.getElementById("aes67-runtime");
+const aes67RuntimeDetail = document.getElementById("aes67-runtime-detail");
+const refreshAes67Button = document.getElementById("refresh-aes67");
 const audioScanStatus = document.getElementById("audio-scan-status");
 
 const invoke = window.__TAURI__?.core?.invoke;
@@ -295,6 +298,44 @@ function renderOmtStatus(status) {
   omtRuntimeDetail.title = String(status?.runtimePath || "Bundled with LinkTalk Bridge");
 }
 
+function renderAes67Status(status) {
+  if (!aes67Runtime || !aes67RuntimeDetail) return;
+  const sourceCount = Number(status?.sourceCount || 0);
+  const sources = `${sourceCount} source${sourceCount === 1 ? "" : "s"} found`;
+  const iface = String(status?.interface || "");
+  if (!status || status.available === false) {
+    aes67Runtime.dataset.state = "unavailable";
+    aes67RuntimeDetail.textContent = "AES67 backend is unavailable.";
+    aes67RuntimeDetail.title = String(status?.error || "");
+    return;
+  }
+  const synced = Boolean(status.ptpSynced);
+  aes67Runtime.dataset.state = synced && !status.error ? "available" : "unavailable";
+  const ptp = synced
+    ? `PTP ${status.grandmaster || "synced"} (${Number(status.ptpOffsetUs || 0)} µs)`
+    : "PTP: no master (AES67 mode on the console? domain/interface?)";
+  const errorText = status.error ? ` · ${String(status.error)}` : "";
+  aes67RuntimeDetail.textContent = `${ptp} · ${sources}${iface ? ` · ${iface}` : ""}${errorText}`;
+  aes67RuntimeDetail.title = [
+    status.configPath ? `Config: ${status.configPath}` : "",
+    (status.sourceNames || []).join(", ")
+  ].filter(Boolean).join("\n");
+}
+
+async function refreshAes67Devices() {
+  if (!invoke || !refreshAes67Button) return;
+  refreshAes67Button.disabled = true;
+  refreshAes67Button.textContent = "Refreshing…";
+  if (aes67Runtime) aes67Runtime.dataset.state = "checking";
+  if (aes67RuntimeDetail) aes67RuntimeDetail.textContent = "Discovering AES67 streams…";
+  try {
+    await refreshDevices();
+  } finally {
+    refreshAes67Button.disabled = false;
+    refreshAes67Button.textContent = "Refresh";
+  }
+}
+
 async function refreshNdiDevices() {
   if (!invoke || !refreshNdiButton) return;
   refreshNdiButton.disabled = true;
@@ -550,7 +591,11 @@ function bridgePortHasOutput(port) {
 function bridgePortHasPersistentNetworkOutput(port) {
   if (!bridgePortHasOutput(port)) return false;
   const deviceId = String(port.output?.deviceId || "");
-  return deviceId.startsWith("ndi:send:") || deviceId.startsWith("omt:send:");
+  return (
+    deviceId.startsWith("ndi:send:") ||
+    deviceId.startsWith("omt:send:") ||
+    deviceId.startsWith("aes67:send:")
+  );
 }
 
 function bridgePortTargetId(port) {
@@ -3124,9 +3169,10 @@ async function refreshManagedInventoryOnly() {
   );
   managedInventoryWatchRetryAt = 0;
   renderInventory(inventory);
-  const [ndiResult, omtResult] = await Promise.allSettled([
+  const [ndiResult, omtResult, aes67Result] = await Promise.allSettled([
     withTimeout(invoke("get_ndi_status"), AUDIO_STATUS_TIMEOUT_MS, "NDI status check"),
-    withTimeout(invoke("get_omt_status"), AUDIO_STATUS_TIMEOUT_MS, "OMT status check")
+    withTimeout(invoke("get_omt_status"), AUDIO_STATUS_TIMEOUT_MS, "OMT status check"),
+    withTimeout(invoke("get_aes67_status"), AUDIO_STATUS_TIMEOUT_MS, "AES67 status check")
   ]);
   if (ndiResult.status === "fulfilled") {
     renderNdiStatus(ndiResult.value);
@@ -3137,6 +3183,11 @@ async function refreshManagedInventoryOnly() {
     renderOmtStatus(omtResult.value);
   } else {
     renderOmtStatus({ available: false, error: String(omtResult.reason) });
+  }
+  if (aes67Result.status === "fulfilled") {
+    renderAes67Status(aes67Result.value);
+  } else {
+    renderAes67Status({ available: false, error: String(aes67Result.reason) });
   }
   return inventory;
 }
@@ -4084,6 +4135,14 @@ async function refreshDevices() {
       renderOmtStatus(status);
       return status;
     });
+    const aes67StatusPromise = withTimeout(
+      invoke("get_aes67_status"),
+      AUDIO_STATUS_TIMEOUT_MS,
+      "AES67 status check"
+    ).then((status) => {
+      renderAes67Status(status);
+      return status;
+    });
     const announcePromise = serverUrlInput.value.trim() && getBridgeCredential()
       ? announceBridge({ quiet: true }).catch((announceError) => {
           console.warn("auto announce failed", announceError);
@@ -4097,13 +4156,17 @@ async function refreshDevices() {
       bridgeStatusPromise,
       portStatusesPromise,
       ndiStatusPromise,
-      omtStatusPromise
+      omtStatusPromise,
+      aes67StatusPromise
     ]);
     if (statusResults[2].status === "rejected") {
       renderNdiStatus({ available: false, error: String(statusResults[2].reason) });
     }
     if (statusResults[3].status === "rejected") {
       renderOmtStatus({ available: false, error: String(statusResults[3].reason) });
+    }
+    if (statusResults[4].status === "rejected") {
+      renderAes67Status({ available: false, error: String(statusResults[4].reason) });
     }
     await announcePromise;
   } catch (error) {
@@ -4131,6 +4194,7 @@ refreshButton?.addEventListener("click", refreshDevices);
 refreshNdiButton?.addEventListener("click", refreshNdiDevices);
 ndiRuntimeLink?.addEventListener("click", openNdiInformation);
 refreshOmtButton?.addEventListener("click", refreshOmtDevices);
+refreshAes67Button?.addEventListener("click", refreshAes67Devices);
 omtRuntimeLink?.addEventListener("click", openOmtInformation);
 autostartInput.addEventListener("change", setAutostartState);
 bridgePorts?.addEventListener("change", handleManagedPortControlChange);

@@ -15,7 +15,7 @@ test("uses direct ICE by default", () => {
 
 test("parses standard ICE server JSON without exposing unrelated properties", () => {
   const config = resolveClientIceConfig({
-    TALKTOME_ICE_SERVERS_JSON: JSON.stringify([
+    LINKTALK_ICE_SERVERS_JSON: JSON.stringify([
       { urls: "stun:stun.example.com:3478" },
       {
         urls: ["turn:turn.example.com:3478?transport=udp", "turns:turn.example.com:5349"],
@@ -24,7 +24,7 @@ test("parses standard ICE server JSON without exposing unrelated properties", ()
         ignored: "value",
       },
     ]),
-    TALKTOME_ICE_TRANSPORT_POLICY: "relay",
+    LINKTALK_ICE_TRANSPORT_POLICY: "relay",
   });
 
   assert.deepEqual(config, {
@@ -54,7 +54,7 @@ test("supports TURN shorthand environment variables", () => {
 
 test("rejects invalid ICE configuration", () => {
   assert.throws(
-    () => resolveClientIceConfig({ TALKTOME_ICE_SERVERS_JSON: "{" }),
+    () => resolveClientIceConfig({ LINKTALK_ICE_SERVERS_JSON: "{" }),
     /not valid JSON/
   );
   assert.throws(
@@ -66,13 +66,13 @@ test("rejects invalid ICE configuration", () => {
     /username and credential/
   );
   assert.throws(
-    () => resolveClientIceConfig({ TALKTOME_ICE_TRANSPORT_POLICY: "invalid" }),
+    () => resolveClientIceConfig({ LINKTALK_ICE_TRANSPORT_POLICY: "invalid" }),
     /must be either/
   );
   assert.throws(
     () => resolveClientIceConfig({
-      TALKTOME_ICE_SERVERS_JSON: JSON.stringify([{ urls: "stun:stun.example.com" }]),
-      TALKTOME_ICE_TRANSPORT_POLICY: "relay",
+      LINKTALK_ICE_SERVERS_JSON: JSON.stringify([{ urls: "stun:stun.example.com" }]),
+      LINKTALK_ICE_TRANSPORT_POLICY: "relay",
     }),
     /requires at least one turn:/
   );
@@ -95,7 +95,7 @@ test("builds UDP and TCP listen infos for every automatic interface", () => {
       announcedAddress: "192.168.10.20",
       candidateAddresses: ["192.168.10.20", "10.20.30.40", "192.168.10.20"],
     },
-    env: { TALKTOME_MEDIA_INTERNAL_IP: "172.16.0.10" },
+    env: { LINKTALK_MEDIA_INTERNAL_IP: "172.16.0.10" },
   }), [
     { protocol: "udp", ip: "192.168.10.20" },
     { protocol: "udp", ip: "10.20.30.40" },
@@ -107,7 +107,7 @@ test("builds UDP and TCP listen infos for every automatic interface", () => {
 test("optionally exposes a separately bound internal address", () => {
   assert.deepEqual(buildWebRtcListenInfos({
     mediaRoute: { announcedAddress: "203.0.113.20" },
-    env: { TALKTOME_MEDIA_INTERNAL_IP: "192.168.1.20" },
+    env: { LINKTALK_MEDIA_INTERNAL_IP: "192.168.1.20" },
   }), [
     {
       protocol: "udp",
@@ -126,7 +126,7 @@ test("optionally exposes a separately bound internal address", () => {
   assert.throws(
     () => buildWebRtcListenInfos({
       mediaRoute: { announcedAddress: "203.0.113.20" },
-      env: { TALKTOME_MEDIA_INTERNAL_IP: "not-an-ip" },
+      env: { LINKTALK_MEDIA_INTERNAL_IP: "not-an-ip" },
     }),
     /bindable IPv4 or IPv6/
   );

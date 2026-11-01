@@ -30,7 +30,7 @@ const legacyConfigPath = path.join(projectRoot, "config.json");
 const legacyPkgConfigPath = path.join(execDir, "config.json");
 const DEFAULT_RTC_PORT_START = 40000;
 const DEFAULT_RTC_PORT_COUNT = 10000;
-const explicitConfigPath = String(process.env.TALKTOME_CONFIG_PATH || '').trim();
+const explicitConfigPath = String(process.env.LINKTALK_CONFIG_PATH || '').trim();
 let configPath = explicitConfigPath ? path.resolve(explicitConfigPath) : dataConfigPath;
 
 if (!explicitConfigPath && !process.pkg && fs.existsSync(legacyConfigPath)) {
@@ -208,7 +208,7 @@ function describeMediaNetworkSelection(selection, availableInterfaces) {
 
 function hasEnvConfig() {
   return Boolean(
-    process.env.TALKTOME_TLS_MODE ||
+    process.env.LINKTALK_TLS_MODE ||
       process.env.PORT ||
       process.env.HTTPS_PORT ||
       process.env.MDNS_HOST ||
@@ -216,9 +216,9 @@ function hasEnvConfig() {
       process.env.INTERCOM_HOSTNAME ||
       process.env.HTTP_PORT ||
       process.env.PUBLIC_IP ||
-      process.env.TALKTOME_MEDIA_INTERFACE ||
-      process.env.TALKTOME_RTC_PORT_START ||
-      process.env.TALKTOME_RTC_PORT_COUNT
+      process.env.LINKTALK_MEDIA_INTERFACE ||
+      process.env.LINKTALK_RTC_PORT_START ||
+      process.env.LINKTALK_RTC_PORT_COUNT
   );
 }
 
@@ -450,8 +450,8 @@ async function runWizard(existingConfig = null) {
 }
 
 function shouldRunWizard(config) {
-  if (process.env.TALKTOME_NO_WIZARD === "1") return false;
-  if (process.env.TALKTOME_WIZARD === "1") return true;
+  if (process.env.LINKTALK_NO_WIZARD === "1") return false;
+  if (process.env.LINKTALK_WIZARD === "1") return true;
   if (config) return false;
   if (!isInteractive()) return false;
 
@@ -473,26 +473,26 @@ function applyConfig(config) {
   }
 
   const explicitPublicIp = typeof process.env.PUBLIC_IP === "string" && process.env.PUBLIC_IP.trim();
-  const explicitMediaInterface = typeof process.env.TALKTOME_MEDIA_INTERFACE === "string" && process.env.TALKTOME_MEDIA_INTERFACE.trim();
+  const explicitMediaInterface = typeof process.env.LINKTALK_MEDIA_INTERFACE === "string" && process.env.LINKTALK_MEDIA_INTERFACE.trim();
   if (explicitPublicIp || explicitMediaInterface) {
-    process.env.TALKTOME_MEDIA_NETWORK_SOURCE = "env";
+    process.env.LINKTALK_MEDIA_NETWORK_SOURCE = "env";
     return;
   }
 
   const mediaConfig = resolveSavedMediaNetworkConfig(config);
   if (mediaConfig.mode === "manual" && mediaConfig.announcedAddress) {
     process.env.PUBLIC_IP = mediaConfig.announcedAddress;
-    process.env.TALKTOME_MEDIA_NETWORK_SOURCE = "config";
+    process.env.LINKTALK_MEDIA_NETWORK_SOURCE = "config";
     return;
   }
 
   if (mediaConfig.mode === "interface" && mediaConfig.interfaceName) {
-    process.env.TALKTOME_MEDIA_INTERFACE = mediaConfig.interfaceName;
-    process.env.TALKTOME_MEDIA_NETWORK_SOURCE = "config";
+    process.env.LINKTALK_MEDIA_INTERFACE = mediaConfig.interfaceName;
+    process.env.LINKTALK_MEDIA_NETWORK_SOURCE = "config";
     return;
   }
 
-  process.env.TALKTOME_MEDIA_NETWORK_SOURCE = "auto";
+  process.env.LINKTALK_MEDIA_NETWORK_SOURCE = "auto";
 }
 
 (async () => {

@@ -22,7 +22,7 @@ test("unpackaged and Docker server replace a stale persisted SQLite binding", (t
     cwd: PROJECT_ROOT,
     env: {
       ...process.env,
-      TALKTOME_DATA_DIR: dataDirectory,
+      LINKTALK_DATA_DIR: dataDirectory,
     },
     encoding: "utf8",
   });

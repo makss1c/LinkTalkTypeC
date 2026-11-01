@@ -30,7 +30,7 @@ test("automatic media routing keeps link-local as a last-resort network", () => 
 
 test("preferred and manual routing remain single-address modes", () => {
   const preferred = resolveTransportMediaRoute({
-    env: { TALKTOME_MEDIA_INTERFACE: "en7" },
+    env: { LINKTALK_MEDIA_INTERFACE: "en7" },
     availableInterfaces: interfaces,
   });
   assert.equal(preferred.mode, "interface");
@@ -53,11 +53,11 @@ test("bridge requests use the matching local interface in automatic mode", () =>
 test("mDNS advertises only the selected local adapter without falling back when unavailable", () => {
   const localAddresses = ["192.168.10.20", "10.20.30.40"];
   const route = resolveTransportMediaRoute({
-    env: { TALKTOME_MEDIA_INTERFACE: "en7" }, availableInterfaces: interfaces,
+    env: { LINKTALK_MEDIA_INTERFACE: "en7" }, availableInterfaces: interfaces,
   });
   assert.deepEqual(selectMdnsAddresses(route, localAddresses), ["10.20.30.40"]);
   const missing = resolveTransportMediaRoute({
-    env: { TALKTOME_MEDIA_INTERFACE: "en9" }, availableInterfaces: interfaces,
+    env: { LINKTALK_MEDIA_INTERFACE: "en9" }, availableInterfaces: interfaces,
   });
   assert.deepEqual(selectMdnsAddresses(missing, localAddresses), []);
 });
@@ -72,7 +72,7 @@ test("automatic and manual mDNS keep local addresses rather than announcing a pu
 
 test("selected adapters expose exactly the chosen networks and keep remaining adapters usable", () => {
   const route = resolveTransportMediaRoute({
-    env: { TALKTOME_MEDIA_INTERFACE: " en7, en0, en7, missing " }, availableInterfaces: interfaces,
+    env: { LINKTALK_MEDIA_INTERFACE: " en7, en0, en7, missing " }, availableInterfaces: interfaces,
   });
   assert.equal(route.interfaceName, "en7,en0,missing");
   assert.equal(route.error, null);
@@ -81,7 +81,7 @@ test("selected adapters expose exactly the chosen networks and keep remaining ad
   assert.equal(selectMediaRouteAddress(route, "::ffff:192.168.10.20"), "192.168.10.20");
   assert.equal(selectMediaRouteAddress(route, "169.254.1.5"), "10.20.30.40");
   const missing = resolveTransportMediaRoute({
-    env: { TALKTOME_MEDIA_INTERFACE: "missing,other" }, availableInterfaces: interfaces,
+    env: { LINKTALK_MEDIA_INTERFACE: "missing,other" }, availableInterfaces: interfaces,
   });
   assert.deepEqual(missing.candidateAddresses, []);
   assert.ok(missing.error);

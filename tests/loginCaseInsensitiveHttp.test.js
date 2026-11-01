@@ -28,10 +28,10 @@ test('HTTP login, admin, Companion and SSO share case-insensitive identities and
     mediaNetworkMode: 'manual', mediaAnnouncedAddress: '127.0.0.1',
   }));
   const env = {
-    ...process.env, TALKTOME_DATA_DIR: directory, TALKTOME_NO_WIZARD: '1',
-    TALKTOME_CONFIG_PATH: configPath, TALKTOME_TLS_MODE: 'proxy',
+    ...process.env, LINKTALK_DATA_DIR: directory, LINKTALK_NO_WIZARD: '1',
+    LINKTALK_CONFIG_PATH: configPath, LINKTALK_TLS_MODE: 'proxy',
     HTTPS_PORT: String(port), PORT: String(port), HTTP_PORT: 'off', MDNS_HOST: 'off',
-    PUBLIC_IP: '127.0.0.1', TALKTOME_SSO_ENABLED: 'true', TALKTOME_SSO_TRUSTED_PROXIES: 'loopback',
+    PUBLIC_IP: '127.0.0.1', LINKTALK_SSO_ENABLED: 'true', LINKTALK_SSO_TRUSTED_PROXIES: 'loopback',
   };
   execFileSync(process.execPath, ['-e', `
     const db = require('./src/server/dbHandler');

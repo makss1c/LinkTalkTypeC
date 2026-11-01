@@ -55,7 +55,7 @@ test("serializes client defaults as a safe browser script", () => {
   });
   assert.equal(
     script,
-    'window.TALKTOME_DEFAULT_CLIENT_SETTINGS = {"audioProfile":"low","showIncomingLevels":true,"lockMultipleTargets":true};\n'
+    'window.LINKTALK_DEFAULT_CLIENT_SETTINGS = {"audioProfile":"low","showIncomingLevels":true,"lockMultipleTargets":true};\n'
   );
 });
 

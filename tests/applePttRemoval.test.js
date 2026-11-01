@@ -14,7 +14,7 @@ test('retires Apple PTT storage on upgrade and restores legacy backups without l
     const assert = require('node:assert/strict');
     const db = require('./src/server/dbHandler');
     const sql = require('./src/server/db');
-    const backupPath = path.join(process.env.TALKTOME_DATA_DIR, 'legacy-backup.json');
+    const backupPath = path.join(process.env.LINKTALK_DATA_DIR, 'legacy-backup.json');
     assert.deepEqual(sql.prepare("SELECT name FROM sqlite_master WHERE name IN ('apple_ptt_channels', 'apple_ptt_registrations')").all(), []);
   `;
   const seed = `
@@ -74,7 +74,7 @@ test('retires Apple PTT storage on upgrade and restores legacy backups without l
   for (const script of [seed, restore, restore]) {
     execFileSync(process.execPath, ['-e', setup + script], {
       cwd: projectRoot,
-      env: { ...process.env, TALKTOME_DATA_DIR: dataDir },
+      env: { ...process.env, LINKTALK_DATA_DIR: dataDir },
       stdio: 'pipe',
       timeout: 20_000,
     });

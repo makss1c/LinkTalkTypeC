@@ -277,7 +277,7 @@ fn load_runtime_library() -> Result<(Library, String), String> {
         }
     }
     Err(format!(
-        "NDI Runtime not found. Install NDI Runtime 6 or set TALKTOME_NDI_RUNTIME. Tried: {}",
+        "NDI Runtime not found. Install NDI Runtime 6 or set LINKTALK_NDI_RUNTIME. Tried: {}",
         errors.join("; ")
     ))
 }
@@ -285,7 +285,7 @@ fn load_runtime_library() -> Result<(Library, String), String> {
 fn runtime_candidates() -> Vec<PathBuf> {
     let names = runtime_library_names();
     let mut candidates = Vec::new();
-    if let Some(path) = std::env::var_os("TALKTOME_NDI_RUNTIME") {
+    if let Some(path) = std::env::var_os("LINKTALK_NDI_RUNTIME").or_else(|| std::env::var_os("TALKTOME_NDI_RUNTIME")) {
         push_runtime_path(&mut candidates, PathBuf::from(path), names);
     }
     for variable in [
@@ -1227,7 +1227,7 @@ pub(crate) mod tests {
     fn ndi_external_audio_probe() {
         use std::sync::mpsc::RecvTimeoutError;
 
-        let Ok(expected_name) = std::env::var("TALKTOME_NDI_TEST_SOURCE") else {
+        let Ok(expected_name) = std::env::var("LINKTALK_NDI_TEST_SOURCE") else {
             return;
         };
         let api = NdiApi::load().expect("NDI Runtime is unavailable in external probe");
@@ -1276,7 +1276,7 @@ pub(crate) mod tests {
                 "ndi::tests::ndi_external_audio_probe",
                 "--nocapture",
             ])
-            .env("TALKTOME_NDI_TEST_SOURCE", source_name)
+            .env("LINKTALK_NDI_TEST_SOURCE", source_name)
             .output()
             .expect("start external NDI audio probe");
         assert!(

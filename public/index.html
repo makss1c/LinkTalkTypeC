@@ -2822,7 +2822,7 @@
           settingsBody.hidden = false;
           positionSettings();
           settingsTrigger.setAttribute("aria-expanded", "true");
-          window.__talktomeOpenSettings?.();
+          window.__linktalkOpenSettings?.();
         };
 
         const closeSettings = () => {
@@ -2832,7 +2832,7 @@
           settingsPanel.classList.remove("is-open");
           settingsBody.hidden = true;
           settingsTrigger.setAttribute("aria-expanded", "false");
-          window.__talktomeCloseSettings?.();
+          window.__linktalkCloseSettings?.();
         };
 
         settingsTrigger.addEventListener("click", (event) => {

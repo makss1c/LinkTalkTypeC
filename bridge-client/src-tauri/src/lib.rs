@@ -1,6 +1,7 @@
 mod audio;
 mod bridge_media;
 mod model;
+mod aes67;
 mod ndi;
 mod network_audio;
 mod omt;
@@ -370,6 +371,11 @@ fn get_ndi_status() -> ndi::NdiStatus {
 #[tauri::command(async)]
 fn get_omt_status() -> omt::OmtStatus {
     network_audio::omt_status(Duration::from_millis(250))
+}
+
+#[tauri::command(async)]
+fn get_aes67_status() -> aes67::Aes67Status {
+    network_audio::aes67_status()
 }
 
 #[tauri::command]
@@ -1077,6 +1083,7 @@ pub fn run() {
             get_bridge_status,
             get_ndi_status,
             get_omt_status,
+            get_aes67_status,
             ensure_bridge_output_endpoint,
             list_audio_devices,
             reserve_bridge_output,

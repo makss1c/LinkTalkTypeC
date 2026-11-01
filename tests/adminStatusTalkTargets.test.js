@@ -1,10 +1,11 @@
 const PROJECT_ROOT = require('./helpers/projectRoot');
+const { readServerSource, nsFromContext } = require('./helpers/serverSource');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
-const server = fs.readFileSync(path.join(PROJECT_ROOT, 'src/server/serverCore.js'), 'utf8');
+const server = readServerSource();
 const admin = fs.readFileSync(path.join(PROJECT_ROOT, 'public', 'admin.js'), 'utf8');
 const adminHtml = fs.readFileSync(path.join(PROJECT_ROOT, 'public', 'admin.html'), 'utf8');
 
@@ -19,7 +20,7 @@ test('talking users show an arrow and their active target names', () => {
   assert.match(admin, /return `→ \$\{names\.length > 0 \? names\.join\(', '\) : 'Target'\}`/);
   assert.match(admin, /talkingLabel: formatStatusTalkTargetLabel\(user\)/);
   assert.match(adminHtml, /@keyframes statusTalkingLedPulse/);
-  assert.match(adminHtml, /\.status-indicator__dot\.is-talking \{\s*background: #8b5cf6;\s*animation: statusTalkingLedPulse/);
+  assert.match(adminHtml, /\.status-indicator__dot\.is-talking \{\s*background: #f69c5c;\s*animation: statusTalkingLedPulse/);
   assert.match(admin, /Date\.now\(\) % STATUS_TALKING_PULSE_MS/);
   assert.match(adminHtml, /animation-delay: var\(--status-talking-animation-delay, 0ms\)/);
   assert.doesNotMatch(adminHtml, /statusTalkingLedBlink/);

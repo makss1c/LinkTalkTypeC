@@ -58,7 +58,7 @@ function parseIceServersJson(value) {
   try {
     parsed = JSON.parse(value);
   } catch (error) {
-    throw new Error(`TALKTOME_ICE_SERVERS_JSON is not valid JSON: ${error.message}`);
+    throw new Error(`LINKTALK_ICE_SERVERS_JSON is not valid JSON: ${error.message}`);
   }
 
   const servers = Array.isArray(parsed) ? parsed : [parsed];
@@ -67,8 +67,8 @@ function parseIceServersJson(value) {
 
 function parseTurnShorthand(env) {
   const rawUrls = readFirstEnvironmentValue(env, [
-    "TALKTOME_TURN_URLS",
-    "TALKTOME_TURN_URL",
+    "LINKTALK_TURN_URLS",
+    "LINKTALK_TURN_URL",
     "TURN_URLS",
     "TURN_URL",
   ]);
@@ -81,13 +81,13 @@ function parseTurnShorthand(env) {
     .map(normalizeIceUrl);
 
   if (urls.length === 0) {
-    throw new Error("TALKTOME_TURN_URLS/TURN_URLS does not contain a usable URL.");
+    throw new Error("LINKTALK_TURN_URLS/TURN_URLS does not contain a usable URL.");
   }
 
-  const username = readFirstEnvironmentValue(env, ["TALKTOME_TURN_USERNAME", "TURN_USERNAME"]);
+  const username = readFirstEnvironmentValue(env, ["LINKTALK_TURN_USERNAME", "TURN_USERNAME"]);
   const credential = readFirstEnvironmentValue(env, [
-    "TALKTOME_TURN_CREDENTIAL",
-    "TALKTOME_TURN_PASSWORD",
+    "LINKTALK_TURN_CREDENTIAL",
+    "LINKTALK_TURN_PASSWORD",
     "TURN_CREDENTIAL",
     "TURN_PASSWORD",
   ]);
@@ -103,13 +103,13 @@ function parseTurnShorthand(env) {
 }
 
 function resolveClientIceConfig(env = process.env) {
-  const json = readFirstEnvironmentValue(env, ["TALKTOME_ICE_SERVERS_JSON"]);
+  const json = readFirstEnvironmentValue(env, ["LINKTALK_ICE_SERVERS_JSON"]);
   const iceServers = json ? parseIceServersJson(json) : parseTurnShorthand(env);
-  const rawPolicy = readFirstEnvironmentValue(env, ["TALKTOME_ICE_TRANSPORT_POLICY"]);
+  const rawPolicy = readFirstEnvironmentValue(env, ["LINKTALK_ICE_TRANSPORT_POLICY"]);
   const iceTransportPolicy = rawPolicy ? rawPolicy.toLowerCase() : "all";
 
   if (!["all", "relay"].includes(iceTransportPolicy)) {
-    throw new Error('TALKTOME_ICE_TRANSPORT_POLICY must be either "all" or "relay".');
+    throw new Error('LINKTALK_ICE_TRANSPORT_POLICY must be either "all" or "relay".');
   }
   if (iceTransportPolicy === "relay") {
     const hasTurnServer = iceServers.some((server) => {
@@ -117,7 +117,7 @@ function resolveClientIceConfig(env = process.env) {
       return urls.some((url) => /^turns?:/i.test(url));
     });
     if (!hasTurnServer) {
-      throw new Error('TALKTOME_ICE_TRANSPORT_POLICY="relay" requires at least one turn: or turns: URL.');
+      throw new Error('LINKTALK_ICE_TRANSPORT_POLICY="relay" requires at least one turn: or turns: URL.');
     }
   }
 
@@ -143,9 +143,9 @@ function buildWebRtcListenInfos({ mediaRoute, env = process.env } = {}) {
     ));
   }
 
-  const internalIp = readFirstEnvironmentValue(env, ["TALKTOME_MEDIA_INTERNAL_IP"]);
+  const internalIp = readFirstEnvironmentValue(env, ["LINKTALK_MEDIA_INTERNAL_IP"]);
   if (internalIp && net.isIP(internalIp) === 0) {
-    throw new Error("TALKTOME_MEDIA_INTERNAL_IP must be a bindable IPv4 or IPv6 address.");
+    throw new Error("LINKTALK_MEDIA_INTERNAL_IP must be a bindable IPv4 or IPv6 address.");
   }
 
   const ip = internalIp || "0.0.0.0";

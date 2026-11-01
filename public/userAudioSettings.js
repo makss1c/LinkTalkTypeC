@@ -1,7 +1,7 @@
 (function initUserAudioSettings(root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  if (root) root.TalktomeUserAudioSettings = api;
+  if (root) root.LinkTalkUserAudioSettings = api;
 }(typeof globalThis !== 'undefined' ? globalThis : this, function createUserAudioSettingsApi() {
   const AUDIO_PROFILES = Object.freeze(['ultra-low', 'low', 'standard']);
   const DIM_AMOUNT_DB_OPTIONS = Object.freeze([-6, -12, -15, -18, -24]);

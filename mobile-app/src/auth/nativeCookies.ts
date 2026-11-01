@@ -1,4 +1,4 @@
-import { SESSION_COOKIE_NAME, type CookieMap } from './cookieJar';
+import { LEGACY_SESSION_COOKIE_NAME, SESSION_COOKIE_NAME, type CookieMap } from './cookieJar';
 
 export type NativeCookieRecord = { name?: string; value?: string };
 export type NativeCookieSource = {
@@ -68,5 +68,5 @@ async function loadNativeCookieSource(): Promise<NativeCookieSource | null> {
 }
 
 export function hasSessionCookie(jar: CookieMap): boolean {
-  return Boolean(jar[SESSION_COOKIE_NAME]);
+  return Boolean(jar[SESSION_COOKIE_NAME] ?? jar[LEGACY_SESSION_COOKIE_NAME]);
 }

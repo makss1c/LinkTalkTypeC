@@ -1,12 +1,12 @@
-// LinkTalk: понятные имена переменных окружения.
-// LINKTALK_<NAME> подставляется вместо TALKTOME_<NAME>, если последняя не задана.
-// Старые TALKTOME_* продолжают работать (совместимость с существующими установками).
+// LinkTalk: переменные окружения называются LINKTALK_*.
+// Прежние TALKTOME_* продолжают работать: если LINKTALK_<NAME> не задана, берётся значение TALKTOME_<NAME>
+// (совместимость с установками, настроенными до переименования).
 for (const key of Object.keys(process.env)) {
-  if (!key.startsWith("LINKTALK_")) {
+  if (!key.startsWith("TALKTOME_")) {
     continue;
   }
-  const legacy = `TALKTOME_${key.slice("LINKTALK_".length)}`;
-  if (process.env[legacy] === undefined) {
-    process.env[legacy] = process.env[key];
+  const current = `LINKTALK_${key.slice("TALKTOME_".length)}`;
+  if (process.env[current] === undefined) {
+    process.env[current] = process.env[key];
   }
 }

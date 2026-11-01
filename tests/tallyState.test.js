@@ -1,4 +1,5 @@
 const PROJECT_ROOT = require('./helpers/projectRoot');
+const { readServerSource, nsFromContext } = require('./helpers/serverSource');
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -33,7 +34,7 @@ test("tally state is isolated per production", () => {
 });
 
 test("server and browser expose production-aware PGM and PRV tally", () => {
-  const server = fs.readFileSync(path.join(PROJECT_ROOT, "src/server/serverCore.js"), "utf8");
+  const server = readServerSource();
   const client = fs.readFileSync(path.join(PROJECT_ROOT, "public/client.js"), "utf8");
   const html = fs.readFileSync(path.join(PROJECT_ROOT, "public/index.html"), "utf8");
 
@@ -41,17 +42,17 @@ test("server and browser expose production-aware PGM and PRV tally", () => {
   assert.match(server, /emitProductionTallyState\(productionId\)/);
   assert.match(server, /previewCameraUser:/);
   assert.match(client, /const visiblePrv = prv && !pgm/);
-  assert.match(client, /const browserThemeColor = isiOS \? "#0b1120" : themeColor/);
+  assert.match(client, /const browserThemeColor = isiOS \? "#161615" : themeColor/);
   assert.match(client, /document\.body\.classList\.remove\("preview-camera", "cut-camera"\)/);
   assert.match(client, /if \(pgm\) document\.body\.classList\.add\("cut-camera"\)/);
   assert.match(client, /else if \(visiblePrv\) document\.body\.classList\.add\("preview-camera"\)/);
-  assert.match(client, /const themeColor = pgm \? "#e00000" : visiblePrv \? "#00875a" : "#0b1120"/);
+  assert.match(client, /const themeColor = pgm \? "#e00000" : visiblePrv \? "#00875a" : "#161615"/);
   assert.match(client, /if \(!isiOS\)[\s\S]+document\.documentElement\.classList\.add/);
   assert.match(client, /document\.documentElement\.style\.backgroundColor = browserThemeColor/);
   assert.match(client, /document\.body\.style\.backgroundColor = browserThemeColor/);
   assert.match(client, /themeColorMeta\?\.setAttribute\("content", browserThemeColor\)/);
   assert.match(html, /user-scalable=no, viewport-fit=cover/);
-  assert.match(html, /meta name="theme-color" content="#0b1120"/);
+  assert.match(html, /meta name="theme-color" content="#000000"/);
   assert.match(html, /html\.preview-camera,[\s\S]+#00875a/);
   assert.match(html, /html\.cut-camera,[\s\S]+#e00000/);
   assert.match(html, /body::after[\s\S]+border: 0\.4rem solid transparent/);

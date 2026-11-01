@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { readServerSource, nsFromContext } = require('./helpers/serverSource');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -41,7 +42,7 @@ test('each media QR opens its own enlarged image and download filename', () => {
 });
 
 test('built-in HTTPS media QR payload uses the configured external port', async () => {
-  const source = fs.readFileSync('src/server/serverCore.js', 'utf8');
+  const source = readServerSource();
   const generated = [];
   const context = vm.createContext({
     ...require('../src/server/qrConnectUrl'),

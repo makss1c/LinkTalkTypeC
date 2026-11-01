@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { readServerSource, nsFromContext, createServerContext } = require('./helpers/serverSource');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const test = require('node:test');
@@ -30,9 +31,9 @@ test('status production filtering handles numeric IDs without changing source ro
 });
 
 test('status snapshots supply production choices and memberships independently of online state', () => {
-  const source = fs.readFileSync(require.resolve('../src/server/serverCore'), 'utf8');
+  const source = readServerSource();
   let membershipReads = 0;
-  const server = vm.createContext({
+  const server = createServerContext({
     areMultipleProductionsEnabled: () => true,
     getAllUsers: () => [{ id: 1, name: 'Camera A' }, { id: 2, name: 'Camera B' }],
     getAllFeeds: () => [], getAllConferences: () => [],
@@ -44,6 +45,7 @@ test('status snapshots supply production choices and memberships independently o
     findUserPeerByUserId: () => null, getBridgeRegistrySnapshot: () => [],
     normalizeRuntimeTalkTargets: (targets) => targets,
     statusIsoTimestamp: () => null, companionNamespace: null, peers: new Map(),
+    monitoring: require('../src/server/monitoring'), monitorLinks: [],
     SERVER_APP_VERSION: 'test', SERVER_STARTED_AT: 0,
     isRunningInContainer: () => false, isServerRestartSupported: () => false,
   });
@@ -57,14 +59,14 @@ test('status snapshots supply production choices and memberships independently o
 });
 
 test('production changes refresh admin status even without connected operator peers', () => {
-  const source = fs.readFileSync(require.resolve('../src/server/serverCore'), 'utf8');
+  const source = readServerSource();
   const broadcasts = [];
-  const server = vm.createContext({
+  const server = createServerContext({
     peers: new Map(),
     scheduleAdminStatusBroadcast: (reason) => broadcasts.push(reason),
   });
   const start = source.indexOf('function notifyAvailableProductionsChanged(');
-  vm.runInContext(source.slice(start, source.indexOf('// Create a self-signed certificate', start)), server);
+  vm.runInContext(source.slice(start, source.indexOf('Object.assign(ns.entityNotifications', start)), server);
   server.notifyAvailableProductionsChanged();
   assert.deepEqual(broadcasts, ['productions-updated']);
 });

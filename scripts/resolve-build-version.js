@@ -91,11 +91,11 @@ function git(args, options = {}) {
 
 function resolveBuildVersion(options = {}) {
   const environment = options.environment || process.env;
-  const propagatedVersion = String(environment.TALKTOME_BUILD_VERSION || "").trim();
+  const propagatedVersion = String(environment.LINKTALK_BUILD_VERSION || "").trim();
   if (propagatedVersion) {
     return createPropagatedVersionInfo({
       appVersion: propagatedVersion,
-      safeVersion: environment.TALKTOME_BUILD_SAFE_VERSION,
+      safeVersion: environment.LINKTALK_BUILD_SAFE_VERSION,
       sha: environment.GITHUB_SHA,
     });
   }

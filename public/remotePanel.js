@@ -24,7 +24,7 @@
         } catch (error) { applying = false; throw error; }
       },
       preferenceChanged(key, value) {
-        if (applying || !panel.state || !TalktomeRemotePanelState.isPreferenceKey(key, userId)) return;
+        if (applying || !panel.state || !LinkTalkRemotePanelState.isPreferenceKey(key, userId)) return;
         pendingPatch[key] = value;
         clearTimeout(patchTimer);
         patchTimer = setTimeout(() => {
@@ -89,5 +89,5 @@
     };
     return panel;
   }
-  root.TalktomeRemotePanel = { create };
+  root.LinkTalkRemotePanel = { create };
 })(window);

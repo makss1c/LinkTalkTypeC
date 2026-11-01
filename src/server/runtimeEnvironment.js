@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 
 function isRunningInContainer(env = process.env) {
-  if (env.TALKTOME_RUNNING_IN_CONTAINER === '1') return true;
+  if (env.LINKTALK_RUNNING_IN_CONTAINER === '1') return true;
   if (fs.existsSync('/.dockerenv')) return true;
 
   try {

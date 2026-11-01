@@ -216,7 +216,7 @@ test('panel preferences and partial target updates survive database restart and 
   `;
   try {
     for (const script of [prepare, restore]) execFileSync(process.execPath, ['-e', script], {
-      env: { ...process.env, TALKTOME_DATA_DIR: dataDir }, stdio: 'pipe',
+      env: { ...process.env, LINKTALK_DATA_DIR: dataDir }, stdio: 'pipe',
     });
   } finally { fs.rmSync(dataDir, { recursive: true, force: true }); }
 });
@@ -348,12 +348,12 @@ test('closing a panel cancels buffered preferences, disconnects and falls back w
       window: root,
       location: { pathname: '/panel', search: '?userId=7', replace(url) { navigations.push(url); } },
       URLSearchParams, io: () => socket,
-      TalktomeRemotePanelState: panelState,
+      LinkTalkRemotePanelState: panelState,
       setTimeout(callback) { const id = Symbol(); timers.set(id, callback); return id; },
       clearTimeout(id) { timers.delete(id); },
     });
     vm.runInContext(fs.readFileSync(path.join(PROJECT_ROOT, 'public/remotePanel.js'), 'utf8'), context);
-    const panel = root.TalktomeRemotePanel.create();
+    const panel = root.LinkTalkRemotePanel.create();
     panel.state = {};
     panel.preferenceChanged('mainButtonTarget:user:7:1', 'user-8');
     panel.heldInputs.set('panel:pointer', { type: 'user', id: 8 });

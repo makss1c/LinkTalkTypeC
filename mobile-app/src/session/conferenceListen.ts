@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { clampVolume } from '../protocol/audioPreference';
 
-const KEY = 'talktome.conference-listen';
+const KEY = 'linktalk.conference-listen';
 
 export type ConferenceListenState = {
   excluded: Record<string, number[]>;

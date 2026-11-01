@@ -6,7 +6,7 @@ const { resolveServerAppVersion } = require("../src/server/appVersion");
 test("explicit release version is a fallback when build metadata is unavailable", () => {
   const version = resolveServerAppVersion({
     environment: {
-      TALKTOME_VERSION: "1.2.0",
+      LINKTALK_VERSION: "1.2.0",
       npm_package_version: "0.0.0",
     },
     packaged: false,
@@ -20,7 +20,7 @@ test("explicit release version is a fallback when build metadata is unavailable"
 
 test("source installs use Git metadata despite stale runtime and embedded versions", () => {
   const version = resolveServerAppVersion({
-    environment: { TALKTOME_VERSION: "1.5.9", npm_package_version: "1.5.9" },
+    environment: { LINKTALK_VERSION: "1.5.9", npm_package_version: "1.5.9" },
     packaged: false,
     packageVersion: () => "0.0.0",
     gitVersion: () => "1.2.0-dev.2.dirty",
@@ -32,7 +32,7 @@ test("source installs use Git metadata despite stale runtime and embedded versio
 
 test("packaged builds use their generated Git version", () => {
   const version = resolveServerAppVersion({
-    environment: { TALKTOME_VERSION: "1.5.9", npm_package_version: "1.5.9" },
+    environment: { LINKTALK_VERSION: "1.5.9", npm_package_version: "1.5.9" },
     packaged: true,
     embeddedVersion: () => "1.2.0-dev.2",
     packageVersion: () => "0.0.0",
@@ -46,7 +46,7 @@ test("packaged builds use their generated Git version", () => {
 
 test("Docker and Git-less installs use the embedded version despite stale environment values", () => {
   assert.equal(resolveServerAppVersion({
-    environment: { TALKTOME_VERSION: "1.5.9", npm_package_version: "1.5.9" },
+    environment: { LINKTALK_VERSION: "1.5.9", npm_package_version: "1.5.9" },
     packaged: false,
     gitVersion: () => "",
     embeddedVersion: () => "1.5.13",
@@ -79,7 +79,7 @@ test("a source server ignores build-time propagation variables at runtime", t =>
   git(['-c', 'tag.gpgSign=false', 'tag', 'v1.5.13']);
   const actual = execFileSync(process.execPath, ['server.js', '--version'], {
     cwd, encoding: 'utf8',
-    env: { ...process.env, TALKTOME_VERSION: '1.5.9', TALKTOME_BUILD_VERSION: '1.5.9', npm_package_version: '1.5.9' },
+    env: { ...process.env, LINKTALK_VERSION: '1.5.9', LINKTALK_BUILD_VERSION: '1.5.9', npm_package_version: '1.5.9' },
   }).trim();
   assert.equal(actual, '1.5.13');
 });
@@ -98,18 +98,18 @@ test("generated Docker build metadata survives stale runtime overrides without G
   }
   fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ version: '0.0.0' }));
   execFileSync(process.execPath, ['scripts/resolve-build-version.js', '--version-json', 'build-version.json'], {
-    cwd, env: { ...process.env, TALKTOME_BUILD_VERSION: '1.5.13' },
+    cwd, env: { ...process.env, LINKTALK_BUILD_VERSION: '1.5.13' },
   });
   const actual = execFileSync(process.execPath, ['-e', 'process.stdout.write(require("./src/server/appVersion").resolveServerAppVersion())'], {
     cwd, encoding: 'utf8',
-    env: { ...process.env, TALKTOME_VERSION: '1.5.9', TALKTOME_BUILD_VERSION: '1.5.9', npm_package_version: '1.5.9' },
+    env: { ...process.env, LINKTALK_VERSION: '1.5.9', LINKTALK_BUILD_VERSION: '1.5.9', npm_package_version: '1.5.9' },
   });
   assert.equal(actual, '1.5.13');
 });
 
 test("the neutral manifest placeholder is never reported as an app version", () => {
   const version = resolveServerAppVersion({
-    environment: { TALKTOME_VERSION: "0.0.0", npm_package_version: "0.0.0" },
+    environment: { LINKTALK_VERSION: "0.0.0", npm_package_version: "0.0.0" },
     packaged: true,
     embeddedVersion: () => "0.0.0",
     packageVersion: () => "0.0.0",

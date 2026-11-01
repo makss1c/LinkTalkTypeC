@@ -6,17 +6,17 @@ describe('parseConnectPayload', () => {
   it('extracts the server and token from a #login= URL', () => {
     expect(
       parseConnectPayload(
-        'https://talktome.restreamer.srfprod.ch/#login=kk2oTJA2LtCQQhwkvpHOgixbjtOYK4LgxrAyq05RnLY',
+        'https://intercom.example.org/#login=EXAMPLE_LOGIN_TOKEN',
       ),
     ).toEqual({
-      serverAddress: 'https://talktome.restreamer.srfprod.ch',
-      token: 'kk2oTJA2LtCQQhwkvpHOgixbjtOYK4LgxrAyq05RnLY',
+      serverAddress: 'https://intercom.example.org',
+      token: 'EXAMPLE_LOGIN_TOKEN',
     });
   });
 
   it('treats the admin portal QR as a server address', () => {
-    expect(parseConnectPayload('https://talktome.restreamer.srfprod.ch')).toEqual({
-      serverAddress: 'https://talktome.restreamer.srfprod.ch',
+    expect(parseConnectPayload('https://intercom.example.org')).toEqual({
+      serverAddress: 'https://intercom.example.org',
     });
   });
 
@@ -34,8 +34,8 @@ describe('parseConnectPayload', () => {
   });
 
   it('treats a long token without a host as a login token', () => {
-    expect(parseConnectPayload('kk2oTJA2LtCQQhwkvpHOgixbjtOYK4LgxrAyq05RnLY')).toEqual({
-      token: 'kk2oTJA2LtCQQhwkvpHOgixbjtOYK4LgxrAyq05RnLY',
+    expect(parseConnectPayload('EXAMPLE_LOGIN_TOKEN')).toEqual({
+      token: 'EXAMPLE_LOGIN_TOKEN',
     });
   });
 

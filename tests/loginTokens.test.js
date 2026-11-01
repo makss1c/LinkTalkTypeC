@@ -1,4 +1,5 @@
 const PROJECT_ROOT = require('./helpers/projectRoot');
+const { readServerSource, nsFromContext } = require('./helpers/serverSource');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -33,7 +34,7 @@ test('user and feed login tokens resolve and are revoked when replaced or reset'
   try {
     execFileSync(process.execPath, ['-e', script], {
       cwd: PROJECT_ROOT,
-      env: { ...process.env, TALKTOME_DATA_DIR: dataDir },
+      env: { ...process.env, LINKTALK_DATA_DIR: dataDir },
       stdio: 'pipe',
     });
   } finally {
@@ -42,7 +43,7 @@ test('user and feed login tokens resolve and are revoked when replaced or reset'
 });
 
 test('admin exposes shared user, feed and guest login QR controls', () => {
-  const server = fs.readFileSync(path.join(PROJECT_ROOT, 'src/server/serverCore.js'), 'utf8');
+  const server = readServerSource();
   const admin = fs.readFileSync(path.join(PROJECT_ROOT, 'public/admin.js'), 'utf8');
   const client = fs.readFileSync(path.join(PROJECT_ROOT, 'public/client.js'), 'utf8');
   const html = fs.readFileSync(path.join(PROJECT_ROOT, 'public/admin.html'), 'utf8');

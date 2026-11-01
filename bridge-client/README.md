@@ -15,6 +15,7 @@ The current bridge path includes:
 - Native CPAL input/output on the exact configured channel pairs.
 - Optional NDI® Audio receive/send through separately installed NDI Tools or NDI Runtime.
 - Bundled Open Media Transport (OMT) Audio receive/send.
+- Built-in **AES67** receive/send (RTP L24/L16 multicast, PTPv2 slave, SAP/SDP) with no runtime and no licence: works with any console or gateway in AES67 mode (Dante devices with AES67 enabled, Riedel, Yamaha, Ravenna…).
 - Opus/RTP transport to and from mediasoup through the server's plain RTP API.
 - Companion press, release and lock commands for managed bridge users.
 - Bundled FFmpeg sidecar support for Opus encoding/decoding.
@@ -22,7 +23,7 @@ The current bridge path includes:
 FFmpeg is used only for Opus encoding/decoding; audio device and channel access
 remain native through CPAL. Packaged builds use a platform-specific FFmpeg
 sidecar. Development builds can also use `ffmpeg` from `PATH` or an explicit
-binary path via `TALKTOME_FFMPEG`.
+binary path via `LINKTALK_FFMPEG`.
 
 ## NDI Audio
 
@@ -51,7 +52,7 @@ The first implementation supports uncompressed planar floating-point audio at
 48 kHz. It intentionally does not use NDI HX, compressed audio or Advanced SDK
 functionality.
 
-Runtime lookup honors `TALKTOME_NDI_RUNTIME` first, followed by the standard
+Runtime lookup honors `LINKTALK_NDI_RUNTIME` first, followed by the standard
 `NDI_RUNTIME_DIR_V6`/`V5`/`V4` variables and common installation paths. The
 Windows fallbacks include both the standalone NDI Runtime and the Runtime
 included with NDI 6 Tools. An environment variable can point either to the
@@ -106,8 +107,25 @@ active senders use a TCP port from OMT's default range 6400–6600.
 The build pins the official `libomt`/`libvmx` binary release and verifies the
 archive and individual library SHA256 hashes before packaging. Both libraries
 are distributed under the MIT License; their license text is included in the
-Bridge resources. `TALKTOME_OMT_RUNTIME` can point to a different `libomt`
+Bridge resources. `LINKTALK_OMT_RUNTIME` can point to a different `libomt`
 library or directory for development and compatibility testing.
+
+## AES67 Audio
+
+AES67 is implemented in Rust inside the Bridge (`src-tauri/src/aes67.rs`); nothing has to be installed.
+It replaces a paid virtual Dante card when the other side can speak AES67.
+
+- **Inputs:** every AES67 stream announced via SAP (UDP 239.255.255.255:9875) appears as
+  `AES67 network input · <name> (<n>ch)`. Streams that do not announce themselves can be listed in `aes67.json`.
+- **Outputs:** eight sender slots `AES67 network output · LinkTalk Bridge 1…8`, 8 channels each (configurable).
+  One mono four-wire line = one channel; assign a Bridge port the pair `3` (mono) or `3/4` (stereo).
+  The streams are announced via SAP and sent as L24, 48 kHz, 1 ms packets to `239.69.<x>.<slot>:5004`.
+- **Clock:** a minimal PTPv2 slave (IEEE 1588, E2E, domain 0 by default) with software timestamps keeps the RTP
+  timestamps of the senders aligned to the network master (the console in AES67 mode). Without a master the
+  Bridge still sends, but with free-running timestamps and shows an orange status.
+- **Configuration:** optional `aes67.json`, see [docs/AES67.md](../docs/AES67.md) (path is shown in the status row).
+
+Allow UDP 319, 320, 5004 and 9875 in the firewall and enable IGMP snooping with a querier on the switch.
 
 ## Development
 
@@ -161,7 +179,7 @@ target-specific sidecar name, for example:
 - `ffmpeg-x86_64-pc-windows-msvc.exe`
 
 `npm run build` runs `npm run prepare:ffmpeg` first. The prepare script copies
-the binary from `FFMPEG_SIDECAR_SOURCE`, `TALKTOME_FFMPEG` or the first `ffmpeg`
+the binary from `FFMPEG_SIDECAR_SOURCE`, `LINKTALK_FFMPEG` or the first `ffmpeg`
 found on `PATH`.
 
 For release builds, use:

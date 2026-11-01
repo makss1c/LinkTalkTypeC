@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { readServerSource, nsFromContext } = require('./helpers/serverSource');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -25,10 +26,10 @@ test('port audio levels validate ranges and preserve mute independently of gain'
 });
 
 test('bridge levels survive routing updates, database restart and backup restore', t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'talktome-bridge-levels-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'linktalk-bridge-levels-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   const run = script => execFileSync(process.execPath, ['-e', script], {
-    cwd: PROJECT_ROOT, env: { ...process.env, TALKTOME_DATA_DIR: dataDir }, encoding: 'utf8',
+    cwd: PROJECT_ROOT, env: { ...process.env, LINKTALK_DATA_DIR: dataDir }, encoding: 'utf8',
   });
   const setup = `const assert = require('node:assert/strict'); const db = require('./src/server/dbHandler');`;
   run(`${setup}
@@ -63,7 +64,7 @@ test('bridge levels survive routing updates, database restart and backup restore
 });
 
 test('bridge level API checks token ownership and port assignment before saving', () => {
-  const source = fs.readFileSync(require.resolve('../src/server/serverCore'), 'utf8');
+  const source = readServerSource();
   let route;
   let saves = 0;
   const auth = () => {};

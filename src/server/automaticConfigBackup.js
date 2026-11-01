@@ -7,7 +7,9 @@ const DEFAULT_AUTO_BACKUP_INTERVAL_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RETRY_MS = 60 * 60 * 1000;
 const MAX_TIMER_MS = DAY_MS;
-const BACKUP_PREFIX = 'talktome-config-auto-';
+const BACKUP_PREFIX = 'linktalk-config-auto-';
+const LEGACY_BACKUP_PREFIX = 'talktome-config-auto-';
+const isBackupName = (name) => name.startsWith(BACKUP_PREFIX) || name.startsWith(LEGACY_BACKUP_PREFIX);
 
 function normalizeAutomaticBackupSettings(value, { strict = false } = {}) {
   if (strict && (!value || typeof value !== 'object' || Array.isArray(value))) {
@@ -34,7 +36,7 @@ function latestAutomaticBackupAt(directory) {
   if (!fs.existsSync(directory)) return null;
   let latest = null;
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.startsWith(BACKUP_PREFIX) || !entry.name.endsWith('.json')) continue;
+    if (!entry.isFile() || !isBackupName(entry.name) || !entry.name.endsWith('.json')) continue;
     const modifiedAt = fs.statSync(path.join(directory, entry.name)).mtimeMs;
     if (Number.isFinite(modifiedAt) && (latest === null || modifiedAt > latest)) latest = modifiedAt;
   }

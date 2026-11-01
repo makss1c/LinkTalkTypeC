@@ -40,7 +40,7 @@ jobs:
       - name: Resolve build version
         id: version
         env:
-          TALKTOME_BUILD_VERSION: ${{ inputs.release_version || '' }}
+          LINKTALK_BUILD_VERSION: ${{ inputs.release_version || '' }}
         run: node scripts/resolve-build-version.js --github-output "$GITHUB_OUTPUT"
       - name: Set mobile version
         env:

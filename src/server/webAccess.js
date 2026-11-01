@@ -26,10 +26,10 @@ function normalizeWebAccess(config = {}, env = process.env) {
 function resolveWebAccess(config = {}, env = process.env) {
   const saved = normalizeWebAccess(config, env);
   const overrides = {
-    tlsMode: env.TALKTOME_TLS_MODE,
+    tlsMode: env.LINKTALK_TLS_MODE,
     httpsPort: env.PORT || env.HTTPS_PORT,
-    publicUrl: env.TALKTOME_PUBLIC_URL || env.PUBLIC_URL,
-    trustedProxies: env.TALKTOME_TRUSTED_PROXIES ?? env.TALKTOME_SSO_TRUSTED_PROXIES,
+    publicUrl: env.LINKTALK_PUBLIC_URL || env.PUBLIC_URL,
+    trustedProxies: env.LINKTALK_TRUSTED_PROXIES ?? env.LINKTALK_SSO_TRUSTED_PROXIES,
   };
   const effective = { ...saved };
   const environmentOverrides = [];

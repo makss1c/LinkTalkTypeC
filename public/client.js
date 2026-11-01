@@ -1,11 +1,11 @@
-const audioMeter = window.TalktomeAudioMeter;
-const remotePanel = window.TalktomeRemotePanel?.create() || null;
+const audioMeter = window.LinkTalkAudioMeter;
+const remotePanel = window.LinkTalkRemotePanel?.create() || null;
 let clientPanelRevision = 0;
 let applyingClientPanelSettings = false;
 let reportClientPanelState = () => {};
 let clientPanelDevices = [];
 let clientPanelReportTimer = null;
-const clientLocalStorage = window.TalktomeRemotePanelState.createStorage(remotePanel ? null : window.localStorage, (key, value) => {
+const clientLocalStorage = window.LinkTalkRemotePanelState.createStorage(remotePanel ? null : window.localStorage, (key, value) => {
   if (applyingClientPanelSettings) return;
   if (remotePanel) remotePanel.preferenceChanged(key, value);
   else {
@@ -13,7 +13,7 @@ const clientLocalStorage = window.TalktomeRemotePanelState.createStorage(remoteP
     clientPanelReportTimer = setTimeout(() => reportClientPanelState(), 120);
   }
 });
-const clientSessionStorage = remotePanel ? window.TalktomeRemotePanelState.createStorage() : window.sessionStorage;
+const clientSessionStorage = remotePanel ? window.LinkTalkRemotePanelState.createStorage() : window.sessionStorage;
 const socket = remotePanel?.socket || io({
   reconnection: true,
   reconnectionAttempts: Infinity,
@@ -230,10 +230,10 @@ const DEFAULT_REPLY_HOTKEY_BINDING = Object.freeze({
 
 const serverDefaultClientSettings = (
   typeof window !== 'undefined'
-  && window.TALKTOME_DEFAULT_CLIENT_SETTINGS
-  && typeof window.TALKTOME_DEFAULT_CLIENT_SETTINGS === 'object'
+  && window.LINKTALK_DEFAULT_CLIENT_SETTINGS
+  && typeof window.LINKTALK_DEFAULT_CLIENT_SETTINGS === 'object'
 )
-  ? window.TALKTOME_DEFAULT_CLIENT_SETTINGS
+  ? window.LINKTALK_DEFAULT_CLIENT_SETTINGS
   : {};
 
 function hasServerDefaultClientSetting(key) {
@@ -1293,12 +1293,12 @@ function shouldUsePersistentRemotePlaybackBus() {
 }
 
 function shouldUseAdaptiveReceivePlayback() {
-  return window.TalktomeReceivePlaybackPolicy?.shouldUseAdaptiveReceivePlayback({ isiOS })
+  return window.LinkTalkReceivePlaybackPolicy?.shouldUseAdaptiveReceivePlayback({ isiOS })
     ?? isiOS;
 }
 
 function shouldUseAdaptivePlainReceivePlayback() {
-  return window.TalktomeReceivePlaybackPolicy?.shouldUsePlainReceivePlayback({
+  return window.LinkTalkReceivePlaybackPolicy?.shouldUsePlainReceivePlayback({
     isiOS,
     isSafariBrowser,
     visibilityState: typeof document !== 'undefined' ? document.visibilityState : 'visible',
@@ -2281,8 +2281,8 @@ function bindSettingsViewButton(button, nextView) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__talktomeOpenSettings = handleSettingsMenuOpened;
-  window.__talktomeCloseSettings = handleSettingsMenuClosed;
+  window.__linktalkOpenSettings = handleSettingsMenuOpened;
+  window.__linktalkCloseSettings = handleSettingsMenuClosed;
 }
 
 function updateUserGainUI() {
@@ -3817,7 +3817,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const stoppedFeedKeys = new Set();
   const listenOnlyConferenceKeys = new Set();
   const activeFeedKeys = new Set();
-  const incomingLevelMonitor = window.TalktomeIncomingAudioLevels.createMonitor({
+  const incomingLevelMonitor = window.LinkTalkIncomingAudioLevels.createMonitor({
     getTransport: () => recvTransport,
     getAudioContext: () => {
       const context = ensureAudioContext();
@@ -3845,8 +3845,8 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll('#targets-list .target-level-meter').forEach((meter) => {
         const level = levels.get(meter.parentElement.id) ?? 0;
         const unavailable = levels.has(meter.parentElement.id) && levels.get(meter.parentElement.id) === null;
-        const percent = window.TalktomeIncomingAudioLevels.levelToPercent(level);
-        audioMeter.renderLevel(meter.firstElementChild, percent, window.TalktomeIncomingAudioLevels.MIN_DB, true);
+        const percent = window.LinkTalkIncomingAudioLevels.levelToPercent(level);
+        audioMeter.renderLevel(meter.firstElementChild, percent, window.LinkTalkIncomingAudioLevels.MIN_DB, true);
         meter.classList.toggle('is-unavailable', unavailable);
         meter.setAttribute('aria-valuenow', String(Math.round(percent)));
         const description = unavailable ? 'Incoming level unavailable in this browser'
@@ -4071,7 +4071,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
   if (typeof window !== 'undefined') {
-    window.talktomeDumpAudioState = () => {
+    window.linktalkDumpAudioState = () => {
       const sharedCtx = sharedAudioContext && sharedAudioContext.state !== 'closed'
         ? sharedAudioContext
         : null;
@@ -4120,21 +4120,21 @@ document.addEventListener("DOMContentLoaded", () => {
       console.info('[audio][dump]', snapshot);
       return snapshot;
     };
-    window.talktomeWarmReceiveAudioSession = async (reason = 'manual-debug') => {
+    window.linktalkWarmReceiveAudioSession = async (reason = 'manual-debug') => {
       const track = await warmReceiveAudioSession(reason);
-      const snapshot = window.talktomeDumpAudioState?.() || null;
+      const snapshot = window.linktalkDumpAudioState?.() || null;
       logReceiveDiagnostic('manual-warm-receive-audio-session', {
         reason,
         micTrack: getAudioTrackSnapshot(track),
       });
       return snapshot;
     };
-    window.talktomeSetAudioSessionType = (type = 'play-and-record') => {
+    window.linktalkSetAudioSessionType = (type = 'play-and-record') => {
       if (!navigator.audioSession) {
         throw new Error('navigator.audioSession is not available');
       }
       navigator.audioSession.type = type;
-      const snapshot = window.talktomeDumpAudioState?.() || null;
+      const snapshot = window.linktalkDumpAudioState?.() || null;
       logReceiveDiagnostic('manual-set-audio-session-type', {
         type,
       });
@@ -6138,7 +6138,7 @@ let cachedOperatorTargets = null;
   }
 
   function resolveRenderedUserTargetKey({ userId = null, peerId = null } = {}) {
-    return window.TalktomeTargetIdentity?.resolveRenderedUserTargetKey({
+    return window.LinkTalkTargetIdentity?.resolveRenderedUserTargetKey({
       userId,
       peerId,
       renderedTargets: getRenderedUserTargetIdentities(),
@@ -7585,7 +7585,7 @@ let cachedOperatorTargets = null;
     const meter = document.getElementById('user-meter-bar');
     return {
       revision: clientPanelRevision,
-      storage: window.TalktomeRemotePanelState.collectStorage(clientLocalStorage, session.userId),
+      storage: window.LinkTalkRemotePanelState.collectStorage(clientLocalStorage, session.userId),
       runtime: {
         devices: clientPanelDevices, inputDeviceId: preferredInputDeviceId,
         outputDeviceId: preferredOutputDeviceId, outputSupported: supportsAudioOutputSelection(),
@@ -7605,7 +7605,7 @@ let cachedOperatorTargets = null;
   async function applyClientPanelSettings(settings, { verifyDevices = false } = {}) {
     if (!settings || typeof settings !== 'object') return;
     clientPanelRevision = Number(settings.revision) || 0;
-    const storage = window.TalktomeRemotePanelState.normalizeStorage(settings.storage || {}, session.userId);
+    const storage = window.LinkTalkRemotePanelState.normalizeStorage(settings.storage || {}, session.userId);
     // The first connection imports existing device-local preferences.
     if (!clientPanelRevision && !Object.keys(storage).length && !remotePanel) return;
     const previousApplying = applyingClientPanelSettings;
@@ -7613,7 +7613,7 @@ let cachedOperatorTargets = null;
     try {
       const previousInput = getSelectedDeviceId();
       const previousOutput = preferredOutputDeviceId;
-      for (const key of Object.keys(window.TalktomeRemotePanelState.collectStorage(clientLocalStorage, session.userId))) {
+      for (const key of Object.keys(window.LinkTalkRemotePanelState.collectStorage(clientLocalStorage, session.userId))) {
         if (!(key in storage)) clientLocalStorage.removeItem(key);
       }
       for (const [key, value] of Object.entries(storage)) {
@@ -8886,8 +8886,8 @@ function emitTargetAudioStateSnapshot(reason = 'target-audio-state') {
 
   function applyUserAudioSettings(value) {
     if (!value || typeof value !== 'object') return;
-    const settings = window.TalktomeUserAudioSettings?.resolve
-      ? window.TalktomeUserAudioSettings.resolve(value)
+    const settings = window.LinkTalkUserAudioSettings?.resolve
+      ? window.LinkTalkUserAudioSettings.resolve(value)
       : value;
     const qualityChanged = qualitySelect
       && QUALITY_PROFILES[settings.audioProfile]

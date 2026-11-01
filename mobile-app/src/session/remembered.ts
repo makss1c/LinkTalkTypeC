@@ -20,8 +20,8 @@ export {
 
 const LEGACY_PROFILE_KEY = 'talktome.remembered-profile';
 const LEGACY_PASSWORD_KEY = 'talktome.remembered-password';
-const PROFILES_KEY = 'talktome.saved-profiles';
-const PASSWORDS_KEY = 'talktome.profile-passwords';
+const PROFILES_KEY = 'linktalk.saved-profiles';
+const PASSWORDS_KEY = 'linktalk.profile-passwords';
 
 type RememberedProfile = {
   serverAddress: string;

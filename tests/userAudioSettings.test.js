@@ -1,4 +1,5 @@
 const PROJECT_ROOT = require('./helpers/projectRoot');
+const { readServerSource, nsFromContext } = require('./helpers/serverSource');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -58,7 +59,7 @@ test('admin and client share the per-user audio settings model', () => {
   const clientHtml = fs.readFileSync(path.join(PROJECT_ROOT, 'public', 'index.html'), 'utf8');
   const adminScript = fs.readFileSync(path.join(PROJECT_ROOT, 'public', 'admin.js'), 'utf8');
   const clientScript = fs.readFileSync(path.join(PROJECT_ROOT, 'public', 'client.js'), 'utf8');
-  const serverScript = fs.readFileSync(path.join(PROJECT_ROOT, 'src/server/serverCore.js'), 'utf8');
+  const serverScript = readServerSource();
 
   assert.match(adminHtml, /src="\/userAudioSettings\.js"/);
   assert.match(clientHtml, /src="\/userAudioSettings\.js"/);
@@ -75,7 +76,7 @@ test('admin and client share the per-user audio settings model', () => {
 test('bridge endpoint browser login requires an explicit confirmation', () => {
   const clientHtml = fs.readFileSync(path.join(PROJECT_ROOT, 'public', 'index.html'), 'utf8');
   const clientScript = fs.readFileSync(path.join(PROJECT_ROOT, 'public', 'client.js'), 'utf8');
-  const serverScript = fs.readFileSync(path.join(PROJECT_ROOT, 'src/server/serverCore.js'), 'utf8');
+  const serverScript = readServerSource();
 
   assert.match(clientHtml, /id="bridge-login-panel"[\s\S]*?may disconnect an active Bridge session/);
   assert.match(clientScript, /confirmBridgeBrowserLogin/);

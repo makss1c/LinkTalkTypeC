@@ -47,7 +47,7 @@ function resolveServerAppVersion({
   const generatedVersion = String(embeddedVersion() || "").trim();
   if (generatedVersion && generatedVersion !== "0.0.0") return generatedVersion;
 
-  const releaseVersion = String(environment.TALKTOME_VERSION || "").trim();
+  const releaseVersion = String(environment.LINKTALK_VERSION || "").trim();
   if (releaseVersion && releaseVersion !== "0.0.0") return releaseVersion;
 
   const npmVersion = String(environment.npm_package_version || "").trim();

@@ -50,7 +50,7 @@ jobs:
         id: build-version
         shell: bash
         env:
-          TALKTOME_BUILD_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.release_version || '' }}
+          LINKTALK_BUILD_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.release_version || '' }}
         run: node scripts/resolve-build-version.js --github-output "$GITHUB_OUTPUT"
 
   build:
@@ -61,8 +61,8 @@ jobs:
       VERSION: ${{ needs.version.outputs.version }}
       APP_VERSION: ${{ needs.version.outputs.app_version }}
       SAFE_VERSION: ${{ needs.version.outputs.safe_version }}
-      TALKTOME_BUILD_VERSION: ${{ needs.version.outputs.app_version }}
-      TALKTOME_BUILD_SAFE_VERSION: ${{ needs.version.outputs.safe_version }}
+      LINKTALK_BUILD_VERSION: ${{ needs.version.outputs.app_version }}
+      LINKTALK_BUILD_SAFE_VERSION: ${{ needs.version.outputs.safe_version }}
     strategy:
       fail-fast: false
       matrix:
@@ -71,13 +71,13 @@ jobs:
             os: macos-14
             ffmpeg_source: macos-lgpl
             ffmpeg_sidecar: ffmpeg-aarch64-apple-darwin
-            artifact_name: talktome_bridge_macos_arm64
+            artifact_name: linktalk_bridge_macos_arm64
             artifact_glob: bridge-client/src-tauri/target/release/bundle/dmg/*.dmg
           - name: Windows x64
             os: windows-latest
             ffmpeg_source: windows-lgpl
             ffmpeg_sidecar: ffmpeg-x86_64-pc-windows-msvc.exe
-            artifact_name: talktome_bridge_windows_x64
+            artifact_name: linktalk_bridge_windows_x64
             artifact_glob: bridge-client/src-tauri/target/release/bundle/nsis/*.exe
 
     steps:
@@ -204,7 +204,7 @@ jobs:
         if: matrix.ffmpeg_source == 'windows-lgpl'
         shell: pwsh
         run: |
-          $binary = Get-Item "bridge-client/src-tauri/target/release/talktome-bridge-client.exe"
+          $binary = Get-Item "bridge-client/src-tauri/target/release/linktalk-bridge-client.exe"
           $actualVersion = $binary.VersionInfo.ProductVersion
           if (-not $actualVersion.StartsWith($env:APP_VERSION)) {
             throw "Expected Bridge version $env:APP_VERSION, found $actualVersion"

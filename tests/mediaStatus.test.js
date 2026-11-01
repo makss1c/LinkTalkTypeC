@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { readServerSource, nsFromContext, createServerContext } = require('./helpers/serverSource');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -9,14 +10,14 @@ function fixture() {
   const peer = { kind: 'user', userId: 7 };
   const broadcasts = [];
   let handler;
-  const server = vm.createContext({
+  const server = createServerContext({
     peers: new Map([['socket', peer]]),
     socket: { id: 'socket', on(event, callback) { assert.equal(event, 'media-transport-event'); handler = callback; } },
     updatePeerMediaTransportStatus,
     scheduleAdminStatusBroadcast(reason) { broadcasts.push(reason); },
     console: { log() {} },
   });
-  const serverSource = fs.readFileSync(require.resolve('../src/server/serverCore'), 'utf8');
+  const serverSource = readServerSource();
   vm.runInContext(serverSource.slice(
     serverSource.indexOf('  socket.on("media-transport-event"'),
     serverSource.indexOf('  socket.on("register-user"'),
@@ -138,12 +139,12 @@ test('older and native clients use server transport states; bridges and offline 
 });
 
 test('server ICE/DTLS changes broadcast status, while events from replaced transports are ignored', () => {
-  const source = fs.readFileSync(require.resolve('../src/server/serverCore'), 'utf8');
+  const source = readServerSource();
   const transport = new EventEmitter();
   transport.observer = new EventEmitter();
   const peer = { sendTransport: transport };
   const broadcasts = [];
-  const context = vm.createContext({
+  const context = createServerContext({
     peers: new Map([['socket', peer]]), console: { log() {} },
     scheduleAdminStatusBroadcast(reason) { broadcasts.push(reason); },
   });
@@ -162,10 +163,10 @@ test('server ICE/DTLS changes broadcast status, while events from replaced trans
 });
 
 test('admin snapshots expose user/feed media health while preserving signaling online counts', () => {
-  const source = fs.readFileSync(require.resolve('../src/server/serverCore'), 'utf8');
+  const source = readServerSource();
   const peer = { kind: 'user', userId: 1, mediaTransportStates: { send: { connectionState: 'failed' } } };
   const feed = { kind: 'feed', feedId: 2, mediaTransportStates: { receive: { connectionState: 'disconnected' } } };
-  const context = vm.createContext({
+  const context = createServerContext({
     areMultipleProductionsEnabled: () => false,
     getAllUsers: () => [{ id: 1, name: 'Camera' }, { id: 3, name: 'Offline' }],
     getAllFeeds: () => [{ id: 2, name: 'Music' }], getAllConferences: () => [],
@@ -175,6 +176,7 @@ test('admin snapshots expose user/feed media health while preserving signaling o
     statusIsoTimestamp: () => null, describeStatusClient: () => 'Browser', statusRemoteAddress: () => '127.0.0.1',
     describePeerMediaStatus, companionUserState: new Map(), getBridgeRegistrySnapshot: () => [],
     companionNamespace: null, peers: new Map([['user', peer], ['feed', feed]]),
+    monitoring: require('../src/server/monitoring'), monitorLinks: [],
     SERVER_APP_VERSION: 'test', SERVER_STARTED_AT: 0,
     isRunningInContainer: () => false, isServerRestartSupported: () => false, WEB_ACCESS: {},
   });

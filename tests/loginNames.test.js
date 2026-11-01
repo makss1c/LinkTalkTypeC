@@ -17,7 +17,7 @@ function withDatabase(body) {
       (${body.toString()})();
     `], {
       cwd: PROJECT_ROOT,
-      env: { ...process.env, TALKTOME_DATA_DIR: dataDir },
+      env: { ...process.env, LINKTALK_DATA_DIR: dataDir },
       stdio: 'pipe',
       timeout: 20_000,
     });

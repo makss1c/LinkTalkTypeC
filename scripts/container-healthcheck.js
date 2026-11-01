@@ -1,3 +1,5 @@
+// Прежние TALKTOME_* переменные окружения работают как LINKTALK_*.
+require("../src/server/envAliases");
 const http = require("http");
 const https = require("https");
 const fs = require("fs");

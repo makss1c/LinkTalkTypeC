@@ -1,4 +1,4 @@
-const KEY = 'talktome.talk-link-token';
+const KEY = 'linktalk.talk-link-token';
 
 /**
  * `linktalk://talk` can be opened by any app or page. Transmission is allowed
@@ -15,7 +15,8 @@ export function talkLinkAuthorizes(url: string, expectedToken: string | null | u
   } catch {
     return false;
   }
-  if (parsed.protocol !== 'talktome:') {
+  // linktalk:// — текущая схема; talktome:// — ссылки, созданные до переименования.
+  if (parsed.protocol !== 'linktalk:' && parsed.protocol !== 'talktome:') {
     return false;
   }
   const path = `${parsed.host}${parsed.pathname}`.replace(/\/+$/, '').replace(/^\/+/, '');

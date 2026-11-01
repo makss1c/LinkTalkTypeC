@@ -16,7 +16,7 @@ function resolveAppDir(base) {
 }
 
 function getDataDir() {
-  const override = process.env.TALKTOME_DATA_DIR;
+  const override = process.env.LINKTALK_DATA_DIR || process.env.TALKTOME_DATA_DIR;
   if (override && String(override).trim()) {
     return path.resolve(override);
   }

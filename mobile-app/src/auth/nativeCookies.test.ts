@@ -32,15 +32,15 @@ describe('nativeCookies', () => {
   });
 
   it('looks up cookies on /login first', () => {
-    expect(cookieLookupUrls('https://talktome.srfprod.ch')).toEqual([
-      'https://talktome.srfprod.ch/login',
-      'https://talktome.srfprod.ch/',
-      'https://talktome.srfprod.ch',
+    expect(cookieLookupUrls('https://intercom.example.com')).toEqual([
+      'https://intercom.example.com/login',
+      'https://intercom.example.com/',
+      'https://intercom.example.com',
     ]);
   });
 
   it('finds a session cookie that is only stored for the login path', async () => {
-    const jar = await readNativeCookies('https://talktome.srfprod.ch', {
+    const jar = await readNativeCookies('https://intercom.example.com', {
       get: async (url): Promise<Record<string, NativeCookieRecord>> =>
         url.endsWith('/login')
           ? { [SESSION_COOKIE_NAME]: { value: 'from-login-path' } }

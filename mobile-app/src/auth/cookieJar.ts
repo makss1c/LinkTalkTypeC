@@ -1,4 +1,6 @@
-export const SESSION_COOKIE_NAME = 'talktome_session';
+export const SESSION_COOKIE_NAME = 'linktalk_session';
+/** Cookie серверов, настроенных до переименования: сессия по-прежнему распознаётся. */
+export const LEGACY_SESSION_COOKIE_NAME = 'talktome_session';
 
 export type CookieMap = Record<string, string>;
 
@@ -82,5 +84,5 @@ export function cookieHeader(jar: CookieMap): string | undefined {
 }
 
 export function sessionCookie(jar: CookieMap): string | undefined {
-  return jar[SESSION_COOKIE_NAME];
+  return jar[SESSION_COOKIE_NAME] ?? jar[LEGACY_SESSION_COOKIE_NAME];
 }

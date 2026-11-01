@@ -48,11 +48,11 @@ test('server starts without Git from another working directory and serves its bu
     applePtt: { enabled: true, privateKey: 'retired-apple-key' },
   }));
   const env = {
-    ...process.env, TALKTOME_DATA_DIR: dataDir, TALKTOME_NO_WIZARD: '1',
-    TALKTOME_CONFIG_PATH: path.join(dataDir, 'config.json'),
-    TALKTOME_TLS_MODE: 'proxy', HTTPS_PORT: String(port), PORT: String(port),
+    ...process.env, LINKTALK_DATA_DIR: dataDir, LINKTALK_NO_WIZARD: '1',
+    LINKTALK_CONFIG_PATH: path.join(dataDir, 'config.json'),
+    LINKTALK_TLS_MODE: 'proxy', HTTPS_PORT: String(port), PORT: String(port),
     HTTP_PORT: 'off', MDNS_HOST: 'off', PUBLIC_IP: '127.0.0.1',
-    TALKTOME_VERSION: '1.5.9', TALKTOME_BUILD_VERSION: '1.5.9',
+    LINKTALK_VERSION: '1.5.9', LINKTALK_BUILD_VERSION: '1.5.9',
   };
   child = spawn(process.execPath, [path.join(appDir, 'server.js')], {
     cwd: directory, env, stdio: ['ignore', 'pipe', 'pipe'],
@@ -114,7 +114,7 @@ test('server starts without Git from another working directory and serves its bu
     });
     assert.equal(imported.status, 200);
     assert.equal((await imported.json()).ok, true);
-    const saved = JSON.parse(fs.readFileSync(env.TALKTOME_CONFIG_PATH, 'utf8'));
+    const saved = JSON.parse(fs.readFileSync(env.LINKTALK_CONFIG_PATH, 'utf8'));
     assert.equal('applePtt' in saved, false);
     assert.equal(saved.defaultClientSettings.allowTargetRearrange, false);
   });

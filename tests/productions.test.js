@@ -178,7 +178,7 @@ test('keeps production layouts separate from the global target matrix', () => {
   try {
     execFileSync(process.execPath, ['-e', script], {
       cwd: projectDir,
-      env: { ...process.env, TALKTOME_DATA_DIR: dataDir },
+      env: { ...process.env, LINKTALK_DATA_DIR: dataDir },
       stdio: 'pipe',
     });
   } finally {
@@ -194,8 +194,8 @@ test('migrates legacy production layouts once without restoring removed membersh
     const fs = require('node:fs');
     const path = require('node:path');
     const Database = require('better-sqlite3');
-    fs.mkdirSync(process.env.TALKTOME_DATA_DIR, { recursive: true });
-    const legacy = new Database(path.join(process.env.TALKTOME_DATA_DIR, 'app.db'));
+    fs.mkdirSync(process.env.LINKTALK_DATA_DIR, { recursive: true });
+    const legacy = new Database(path.join(process.env.LINKTALK_DATA_DIR, 'app.db'));
     legacy.exec(\`
       CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, password TEXT NOT NULL);
       CREATE TABLE conferences (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
@@ -244,7 +244,7 @@ test('migrates legacy production layouts once without restoring removed membersh
     for (const script of [firstRun, secondRun]) {
       execFileSync(process.execPath, ['-e', script], {
         cwd: projectDir,
-        env: { ...process.env, TALKTOME_DATA_DIR: dataDir },
+        env: { ...process.env, LINKTALK_DATA_DIR: dataDir },
         stdio: 'pipe',
       });
     }

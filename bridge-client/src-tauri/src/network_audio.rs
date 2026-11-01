@@ -9,18 +9,20 @@ use std::time::{Duration, Instant};
 
 use crate::audio::{AudioDeviceInfo, AudioDeviceSnapshotEntry};
 use crate::bridge_media::BridgeOutputMixerSource;
-use crate::{ndi, omt};
+use crate::{aes67, ndi, omt};
 
 #[allow(dead_code)]
 pub enum NetworkAudioInputRuntime {
     Ndi(ndi::NdiInputRuntime),
     Omt(omt::OmtInputRuntime),
+    Aes67(aes67::Aes67InputRuntime),
 }
 
 #[allow(dead_code)]
 pub enum NetworkAudioOutputRuntime {
     Ndi(ndi::NdiOutputRuntime),
     Omt(omt::OmtOutputRuntime),
+    Aes67(aes67::Aes67OutputRuntime),
 }
 
 pub struct InputStartRequest {
@@ -82,6 +84,7 @@ impl Drop for BackendQueryGuard {
 // remains detached, but completion releases the backend so Refresh can recover.
 static NDI_BACKEND: BackendState = BackendState::new();
 static OMT_BACKEND: BackendState = BackendState::new();
+static AES67_BACKEND: BackendState = BackendState::new();
 
 pub fn audio_devices(wait: Duration) -> NetworkAudioScan {
     scan_devices(wait, false)
@@ -96,11 +99,13 @@ fn scan_devices(wait: Duration, snapshot: bool) -> NetworkAudioScan {
         }
     });
     let omt = spawn_backend_probe("OMT", &OMT_BACKEND, move || omt::audio_devices(wait));
+    let aes67 = spawn_backend_probe("AES67", &AES67_BACKEND, move || aes67::audio_devices(wait));
     let mut devices = Vec::new();
     let mut warnings = Vec::new();
 
     collect_backend_probe(ndi, BACKEND_PROBE_TIMEOUT, &mut devices, &mut warnings);
     collect_backend_probe(omt, BACKEND_PROBE_TIMEOUT, &mut devices, &mut warnings);
+    collect_backend_probe(aes67, BACKEND_PROBE_TIMEOUT, &mut devices, &mut warnings);
 
     NetworkAudioScan { devices, warnings }
 }
@@ -262,6 +267,10 @@ pub fn omt_status(wait: Duration) -> omt::OmtStatus {
     }
 }
 
+pub fn aes67_status() -> aes67::Aes67Status {
+    aes67::status()
+}
+
 #[cfg(test)]
 mod tests {
     use super::{collect_backend_probe, spawn_backend_probe, BackendState};
@@ -327,11 +336,15 @@ mod tests {
 }
 
 pub fn is_input_device(device_id: &str) -> bool {
-    ndi::is_input_device(device_id) || omt::is_input_device(device_id)
+    ndi::is_input_device(device_id)
+        || omt::is_input_device(device_id)
+        || aes67::is_input_device(device_id)
 }
 
 pub fn is_output_device(device_id: &str) -> bool {
-    ndi::is_output_device(device_id) || omt::is_output_device(device_id)
+    ndi::is_output_device(device_id)
+        || omt::is_output_device(device_id)
+        || aes67::is_output_device(device_id)
 }
 
 pub fn start_input(request: InputStartRequest) -> Result<NetworkAudioInputRuntime, String> {
@@ -363,6 +376,20 @@ pub fn start_input(request: InputStartRequest) -> Result<NetworkAudioInputRuntim
         )
         .map(NetworkAudioInputRuntime::Omt);
     }
+    if aes67::is_input_device(&request.device_id) {
+        return aes67::Aes67InputRuntime::start(
+            request.device_id,
+            request.left_channel,
+            request.right_channel,
+            request.sender,
+            request.last_error,
+            request.level_milli_db,
+            request.captured_frames,
+            request.dropped_chunks,
+            request.dropped_frames,
+        )
+        .map(NetworkAudioInputRuntime::Aes67);
+    }
     Err(format!(
         "unknown network audio input device: {}",
         request.device_id
@@ -381,6 +408,10 @@ pub fn start_output(
     if omt::is_output_device(&device_id) {
         return omt::OmtOutputRuntime::start(device_id, sources, last_error)
             .map(NetworkAudioOutputRuntime::Omt);
+    }
+    if aes67::is_output_device(&device_id) {
+        return aes67::Aes67OutputRuntime::start(device_id, sources, last_error)
+            .map(NetworkAudioOutputRuntime::Aes67);
     }
     Err(format!("unknown network audio output device: {device_id}"))
 }

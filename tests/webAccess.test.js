@@ -13,7 +13,7 @@ const { Server } = require('socket.io');
 const { normalizeWebAccess, resolveWebAccess, createWebServer, requestConnectOrigin } = require('../src/server/webAccess');
 
 test('container fallback stays editable and saved ports take precedence', () => {
-  const env = { TALKTOME_RUNNING_IN_CONTAINER: '1' };
+  const env = { LINKTALK_RUNNING_IN_CONTAINER: '1' };
   const defaults = resolveWebAccess({}, env);
   assert.equal(defaults.httpsPort, 8443);
   assert.deepEqual(defaults.environmentOverrides, []);
@@ -39,7 +39,7 @@ test('native fallback remains 443 without locking the Admin field', t => {
 
 test('web access defaults, environment precedence and validation', () => {
   assert.equal(resolveWebAccess({}, {}).tlsMode, 'internal');
-  const active = resolveWebAccess({ tlsMode: 'internal', httpsPort: 8443 }, { TALKTOME_TLS_MODE: 'proxy', PORT: '8080' });
+  const active = resolveWebAccess({ tlsMode: 'internal', httpsPort: 8443 }, { LINKTALK_TLS_MODE: 'proxy', PORT: '8080' });
   assert.equal(active.tlsMode, 'proxy');
   assert.equal(active.httpsPort, 8080);
   assert.deepEqual(active.environmentOverrides, ['tlsMode', 'httpsPort']);
@@ -106,8 +106,8 @@ for (const mode of ['internal', 'proxy']) {
         setTimeout(() => reject(new Error('Socket.IO timeout')), 3000).unref();
       }), 'connected');
       writeFileSync(join(dir, 'config.json'), JSON.stringify({ tlsMode: mode, httpsPort: port }));
-      const env = { ...process.env, TALKTOME_DATA_DIR: dir };
-      for (const key of ['PORT', 'HTTPS_PORT', 'TALKTOME_TLS_MODE']) delete env[key];
+      const env = { ...process.env, LINKTALK_DATA_DIR: dir };
+      for (const key of ['PORT', 'HTTPS_PORT', 'LINKTALK_TLS_MODE']) delete env[key];
       const healthcheck = spawn(process.execPath, [join(PROJECT_ROOT, 'scripts/container-healthcheck.js')], { env });
       assert.equal(await new Promise((resolve, reject) => {
         healthcheck.on('error', reject);

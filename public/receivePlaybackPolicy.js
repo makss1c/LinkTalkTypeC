@@ -4,7 +4,7 @@
     module.exports = policy;
   }
   if (root) {
-    root.TalktomeReceivePlaybackPolicy = policy;
+    root.LinkTalkReceivePlaybackPolicy = policy;
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function createReceivePlaybackPolicy() {
   function shouldUseAdaptiveReceivePlayback({ isiOS = false } = {}) {

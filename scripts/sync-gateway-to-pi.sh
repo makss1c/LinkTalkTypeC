@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-target="${TALKTOME_GATEWAY_HOST:-${TALKTOME_PI:-}}"
-dest="${TALKTOME_GATEWAY_DIR:-${TALKTOME_PI_DIR:-~/talktome-dev}}"
+target="${LINKTALK_GATEWAY_HOST:-${LINKTALK_PI:-}}"
+dest="${LINKTALK_GATEWAY_DIR:-${LINKTALK_PI_DIR:-~/talktome-dev}}"
 
 if [[ -z "$target" ]]; then
-  echo "Set TALKTOME_GATEWAY_HOST=user@gateway-host.local before running gateway sync." >&2
+  echo "Set LINKTALK_GATEWAY_HOST=user@gateway-host.local before running gateway sync." >&2
   exit 1
 fi
 

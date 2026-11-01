@@ -54,12 +54,12 @@ function resolveTransportMediaRoute({ env = process.env, availableInterfaces = [
       interfaces: [],
       mode: "manual",
       interfaceName: "",
-      source: env.TALKTOME_MEDIA_NETWORK_SOURCE || "env",
+      source: env.LINKTALK_MEDIA_NETWORK_SOURCE || "env",
       error: null,
     };
   }
 
-  const selectedNames = normalizeMediaInterfaceNames(env.TALKTOME_MEDIA_INTERFACE);
+  const selectedNames = normalizeMediaInterfaceNames(env.LINKTALK_MEDIA_INTERFACE);
   if (selectedNames.length) {
     const matches = selectedNames.map(name => availableInterfaces.find(entry => entry.name === name)).filter(Boolean);
     const candidateAddresses = [...new Set(matches.map(entry => entry.address))];
@@ -69,7 +69,7 @@ function resolveTransportMediaRoute({ env = process.env, availableInterfaces = [
       interfaces: matches,
       mode: "interface",
       interfaceName: selectedNames.join(","),
-      source: env.TALKTOME_MEDIA_NETWORK_SOURCE || "config",
+      source: env.LINKTALK_MEDIA_NETWORK_SOURCE || "config",
       error: matches.length ? null : `Selected media interfaces "${selectedNames.join(", ")}" have no usable IPv4 address`,
     };
   }
@@ -82,7 +82,7 @@ function resolveTransportMediaRoute({ env = process.env, availableInterfaces = [
     interfaces: automaticInterfaces,
     mode: "auto",
     interfaceName: first?.name || "",
-    source: env.TALKTOME_MEDIA_NETWORK_SOURCE || "auto",
+    source: env.LINKTALK_MEDIA_NETWORK_SOURCE || "auto",
     error: first ? null : "No usable non-internal IPv4 interface found",
   };
 }

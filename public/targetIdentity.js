@@ -4,7 +4,7 @@
     module.exports = identity;
   }
   if (root) {
-    root.TalktomeTargetIdentity = identity;
+    root.LinkTalkTargetIdentity = identity;
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function createTargetIdentity() {
   function normalizeIdentity(value) {

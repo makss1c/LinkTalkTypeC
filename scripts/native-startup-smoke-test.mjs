@@ -147,7 +147,7 @@ function verifyPackagedServerVersion(executable, expectedVersion) {
   const environment = { ...process.env };
   // Launchers and services can retain values from an earlier installation.
   // The executable must identify itself even in that environment.
-  environment.TALKTOME_VERSION = "0.0.0-stale";
+  environment.LINKTALK_VERSION = "0.0.0-stale";
   environment.npm_package_version = "0.0.0-stale";
 
   const result = spawnSync(executable, ["--version"], {
@@ -211,12 +211,12 @@ async function terminateProcessTree(child, processResult) {
 
 function trayLogPath(environment) {
   if (process.platform === "win32") {
-    return path.join(environment.LOCALAPPDATA, "Talktome Server", "Logs", "server.log");
+    return path.join(environment.LOCALAPPDATA, "LinkTalk Server", "Logs", "server.log");
   }
   if (process.platform === "darwin") {
-    return path.join(environment.HOME, "Library", "Logs", "Talktome Server", "server.log");
+    return path.join(environment.HOME, "Library", "Logs", "LinkTalk Server", "server.log");
   }
-  return path.join(environment.HOME, ".talktome-server", "logs", "server.log");
+  return path.join(environment.HOME, ".linktalk-server", "logs", "server.log");
 }
 
 async function stageServerRuntime(executable, tempRoot) {
@@ -260,7 +260,7 @@ async function main() {
     throw new Error(`Executable not found: ${executable}`);
   }
 
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), `talktome-${mode}-smoke-`));
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), `linktalk-${mode}-smoke-`));
   const dataDir = path.join(tempRoot, "data");
   const localAppData = path.join(tempRoot, "local-app-data");
   await mkdir(dataDir, { recursive: true });
@@ -309,14 +309,14 @@ async function main() {
 
   const environment = {
     ...process.env,
-    TALKTOME_DATA_DIR: dataDir,
-    TALKTOME_NO_WIZARD: "1",
+    LINKTALK_DATA_DIR: dataDir,
+    LINKTALK_NO_WIZARD: "1",
     PUBLIC_IP: "127.0.0.1",
     HTTPS_PORT: String(httpsPort),
     HTTP_PORT: "off",
     MDNS_HOST: "off",
-    TALKTOME_RTC_PORT_START: String(rtcPortStart),
-    TALKTOME_RTC_PORT_COUNT: "32",
+    LINKTALK_RTC_PORT_START: String(rtcPortStart),
+    LINKTALK_RTC_PORT_COUNT: "32",
     HOME: tempRoot,
     USERPROFILE: tempRoot,
     LOCALAPPDATA: localAppData,
