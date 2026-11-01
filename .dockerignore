@@ -13,11 +13,11 @@ config.json
 better_sqlite3.node
 mediasoup-worker
 mediasoup-worker.exe
-talktome_arm64
-talktome_win64.exe
-talktome_*.zip
-talktome_*.sha256
-talktome_*_release_*/
+linktalk_arm64
+linktalk_win64.exe
+linktalk_*.zip
+linktalk_*.sha256
+linktalk_*_release_*/
 coverage
 dist
 build

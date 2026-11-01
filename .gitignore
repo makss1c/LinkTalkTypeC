@@ -22,17 +22,17 @@ node_modules/
 .npm/
 
 # Build artifacts
-talktome_arm64
+linktalk_arm64
 mediasoup-worker
 mediasoup-worker*
 better_sqlite3.node
-talktome_win64*.exe
-talktome_win64*.zip
-talktome_windows_x64_release_*/
-talktome_macos*.zip
-talktome_macos*.sha256
-talktome_macos*_release_*/
-talktome-macos*
+linktalk_win64*.exe
+linktalk_win64*.zip
+linktalk_windows_x64_release_*/
+linktalk_macos*.zip
+linktalk_macos*.sha256
+linktalk_macos*_release_*/
+linktalk-macos*
 worker/
 dist/
 build/
@@ -71,4 +71,4 @@ server-app/tauri.local-version.json
 server-app/tauri.release-version.json
 
 # local build artifacts
-talktome_win64_bundle/
+linktalk_win64_bundle/

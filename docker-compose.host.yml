@@ -4,7 +4,7 @@ services:
     build:
       context: .
       args:
-        TALKTOME_VERSION: "1.5.17-linktalk.1"
+        LINKTALK_VERSION: "1.5.17-linktalk.1"
     image: linktalk:latest
     container_name: linktalk
     restart: unless-stopped
